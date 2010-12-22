@@ -1,4 +1,4 @@
-LLVM_SRC=/home/petr/llvm
+LLVM_SRC=llvm
 
 -include config.local
 
