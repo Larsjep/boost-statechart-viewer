@@ -10,5 +10,5 @@ cd llvm/_build
 cat <<EOF
 To compile LLVM run the following comands:
 cd $PWD
-make
+make install
 EOF
