@@ -3,11 +3,12 @@
 -include config.local
 
 # Use our version of clang (even without installing)
-LLVM_BIN = $(CURDIR)/_install/bin
+LLVM_BIN= $(CURDIR)/_install/bin
 
 LLVM_CONFIG := $(shell $(LLVM_BIN)/llvm-config --cxxflags --ldflags --libs all)
 
-clang++ : bp.cpp
-	$(LLVM_BIN)/clang++ -v -g -cc1 -fno-rtti $(LLVM_CONFIG)		\
-	-lclangBasic -lclangLex -lclangDriver -lclangFrontend		\
-	-lclangParse -lclangAST -lclangSema -lclangAnalysis bp.cpp
+g++ : bp.cpp
+	g++ bp.cpp -g -lclangParse -lclangFrontend -lclangSerialization \
+	-lclangDriver -lclangCodeGen -lclangSema -lclangChecker \
+	-lclangAnalysis -lclangRewrite -lclangAST -lclangLex -lclangBasic \
+	$(LLVM_CONFIG)

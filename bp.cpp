@@ -2,6 +2,7 @@
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/System/Host.h"
+#include "llvm/Config/config.h"
 
 #include "clang/Frontend/DiagnosticOptions.h"
 #include "clang/Frontend/TextDiagnosticPrinter.h"
@@ -23,6 +24,8 @@
 #include "clang/Frontend/PreprocessorOptions.h"
 #include "clang/Frontend/FrontendOptions.h"
 
+#include "clang/Frontend/CompilerInvocation.h"
+
 #include "clang/Basic/IdentifierTable.h"
 #include "clang/Basic/Builtins.h"
 
@@ -39,22 +42,28 @@
 #include "clang/Parse/Parser.h"
 
 #include "clang/Parse/ParseAST.h"
+#include "clang/Basic/Version.h"
 
 
-using namespace clang;
-
-class FindStates : public ASTConsumer
+//using namespace clang;
+class FindStates : public clang::ASTConsumer
 {
+	
 	public:
-	virtual void HandleTopLevelDecl(DeclGroupRef DGR)
+	virtual void HandleTopLevelDecl(clang::DeclGroupRef DGR)
 	{
-	for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
+	for (clang::DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
 	{
-	      	const Decl *D = *i;
-		const NamedDecl *ND = dyn_cast<NamedDecl>(D);
-		if (const TagDecl *TD = dyn_cast<TagDecl>(D))
-          	if(TD->isStruct()) //je to struktura?
-                        llvm::errs() << "Novy stav: " << ND->getNameAsString() <<"\n";
+		const clang::Decl *D = *i;
+		clang::Stmt *x = D->getBody();
+		const clang::NamedDecl *ND = dyn_cast<clang::NamedDecl>(D);
+		//SourceLocation sl = D->getLocation();
+		if (const clang::TagDecl *TD = dyn_cast<clang::TagDecl>(D))
+		if(TD->isStruct() && D->hasAttrs()) //je to struktura?
+		{
+			ND->print(llvm::errs())	;		
+			std::cout << "Novy stav: " << ND->getNameAsString() << "   xx \n";
+		}
 	}
 	/* TODO
 	Zjistit, zda je dedena?
@@ -65,39 +74,73 @@ class FindStates : public ASTConsumer
 
 int main(int argc, char *argv[])
 {
-       DiagnosticOptions diagnosticOptions;
-       TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::outs(), diagnosticOptions);
-       DiagnosticClient *dc;
-       llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> dis;
-       Diagnostic diag(dis,dc);
-       LangOptions lang;
+       clang::DiagnosticOptions diagnosticOptions;
+       clang::TextDiagnosticPrinter *tdp = new clang::TextDiagnosticPrinter(llvm::nulls(), diagnosticOptions);
+        llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> dis(new clang::DiagnosticIDs());
+       clang::Diagnostic diag(dis,tdp);
+       clang::LangOptions lang;
+       lang.BCPLComment=1;
+       lang.CPlusPlus=1; 
+       clang::FileSystemOptions fileSysOpt;
+       clang::FileManager fm (fileSysOpt);
 
-       FileSystemOptions fileSysOpt;
-       FileManager fm (fileSysOpt);
+       clang::SourceManager sm ( diag, fm);
+       clang::HeaderSearch *headers = new clang::HeaderSearch(fm);
+       clang::CompilerInvocation::setLangDefaults(lang, clang::IK_ObjCXX);
 
-       SourceManager sm ( diag, fm);
-       HeaderSearch *headers = new HeaderSearch(fm);
-       
-       HeaderSearchOptions hsopts;
-       TargetOptions to;
+       clang::HeaderSearchOptions hsopts;
+       hsopts.ResourceDir="/usr/local/lib/clang/2.9/";
+	/*hsopts.AddPath("/usr/include/linux",
+			clang::frontend::Angled,
+			false,
+			false,
+			false);	
+	hsopts.AddPath("/usr/include/c++/4.4",
+			clang::frontend::Angled,
+			false,
+			false,
+			false);
+	hsopts.AddPath("/usr/include/c++/4.4/tr1",
+			clang::frontend::Angled,
+			false,
+			false,
+			false);
 
-       //init.AddDefaultSystemIncludePaths(lang);
-       //init.Realize();
-       TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, to);
-       Preprocessor *pp = new Preprocessor(diag, lang, *ti, sm, *headers);
-       FrontendOptions f;
-       PreprocessorOptions ppio;
-       InitializePreprocessor(*pp, ppio,hsopts,f);
+	hsopts.AddPath("/home/petr/Dokumenty/BOOST/boost_1_44_0",
+			clang::frontend::Angled,
+			false,
+			false,
+			false);
+	hsopts.AddPath("/usr/include/c++/4.4/i686-linux-gnu",
+			clang::frontend::Angled,
+			false,
+			false,
+			false);*/
+       clang::TargetOptions to;
+       to.Triple = llvm::sys::getHostTriple();
+       clang::TargetInfo *ti = clang::TargetInfo::CreateTargetInfo(diag, to);
+       clang::ApplyHeaderSearchOptions(
+        *headers,
+        hsopts,
+        lang,
+        ti->getTriple());
 
-       const FileEntry *file = fm.getFile("test.cpp");
+
+       clang::Preprocessor pp(diag, lang, *ti, sm, *headers);
+       clang::FrontendOptions f;
+       clang::PreprocessorOptions ppio;
+       clang::InitializePreprocessor(pp, ppio,hsopts,f);
+       const clang::FileEntry *file = fm.getFile("test.cpp");
        sm.createMainFileID(file);
-
-       IdentifierTable tab(lang);
-       SelectorTable sel;
-       Builtin::Context builtins(*ti);
+       //pp.EnterMainSourceFile();
+       clang::IdentifierTable tab(lang);
+       clang::SelectorTable sel;
+       clang::Builtin::Context builtins(*ti);
        FindStates c;
-       ASTContext ctx(lang, sm, *ti, tab, sel, builtins,0);
-       ParseAST(*pp, &c, ctx, false, true);
+       clang::ASTContext ctx(lang, sm, *ti, tab, sel, builtins,0);
+       tdp->BeginSourceFile(lang, &pp);
+       clang::ParseAST(pp, &c, ctx, false, false);
+	tdp->EndSourceFile();
 
        return 0;
 
