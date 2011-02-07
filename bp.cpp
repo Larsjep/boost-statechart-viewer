@@ -10,6 +10,7 @@
 #include "clang/Basic/LangOptions.h"
 #include "clang/Basic/FileSystemOptions.h"
 
+#include "clang/Index/TranslationUnit.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Lex/HeaderSearch.h"
 #include "clang/Basic/FileManager.h"
@@ -44,52 +45,81 @@
 #include "clang/Parse/ParseAST.h"
 #include "clang/Basic/Version.h"
 
+//my own header files
+#include "stringoper.h"
 
-//using namespace clang;
-class FindStates : public clang::ASTConsumer
+using namespace clang;
+//globalni declaration
+
+
+class FindStates : public ASTConsumer
 {
-	
 	public:
-	virtual void HandleTopLevelDecl(clang::DeclGroupRef DGR)
-	{
-	for (clang::DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
-	{
-		const clang::Decl *D = *i;
-		clang::Stmt *x = D->getBody();
-		const clang::NamedDecl *ND = dyn_cast<clang::NamedDecl>(D);
-		//SourceLocation sl = D->getLocation();
-		if (const clang::TagDecl *TD = dyn_cast<clang::TagDecl>(D))
-		if(TD->isStruct() && D->hasAttrs()) //je to struktura?
-		{
-			ND->print(llvm::errs())	;		
-			std::cout << "Novy stav: " << ND->getNameAsString() << "   xx \n";
-		}
+	FileID mainF;
+	SourceLocation loc;
+	FullSourceLoc *fSloc;
+	virtual void Initialize(ASTContext &ctx)
+	{	
+		SourceManager &sman = ctx.getSourceManager();
+		mainF = sman.getMainFileID();
+		fSloc = new FullSourceLoc(loc, sman);
 	}
+	virtual void HandleTopLevelDecl(DeclGroupRef DGR)
+	{
+		SourceLocation loc;
+		const SourceManager &sman = fSloc->getManager();
+		std::string line;
+		std::string super_class;
+		for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
+		{
+			const Decl *D = *i;
+			loc = D->getLocation();
+			if(sman.isFromMainFile(loc)) //only declaration in Main file interested us
+			{
+				Stmt *x = D->getBody();
+				const NamedDecl *ND = dyn_cast<NamedDecl>(D);;
+				if (const TagDecl *TD = dyn_cast<TagDecl>(D))
+				if(TD->isStruct() || TD->isClass()) //is it a structure or class
+				{	
+					line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
+					if(is_derived(line))
+					{
+						super_class = get_super_class(line);
+						if(is_state(super_class))
+						std::cout << "New state: " << ND->getNameAsString() << "\n";
+						//const DeclContext *dc = D->getDeclContext();
+						//std::cout<<<<"\n"; vypise data od radku s deklaraci, tzn, ze nas bude zajimat vsechno az do znaku \n
+					}
+				}
+			}
+		}
 	/* TODO
 	Zjistit, zda je dedena?
 	Pokud ANO, tak projit strom dolu 
 	*/
-        }
+	}
+	
 };
+
 
 int main(int argc, char *argv[])
 {
-       clang::DiagnosticOptions diagnosticOptions;
-       clang::TextDiagnosticPrinter *tdp = new clang::TextDiagnosticPrinter(llvm::nulls(), diagnosticOptions);
-        llvm::IntrusiveRefCntPtr<clang::DiagnosticIDs> dis(new clang::DiagnosticIDs());
-       clang::Diagnostic diag(dis,tdp);
-       clang::LangOptions lang;
-       lang.BCPLComment=1;
-       lang.CPlusPlus=1; 
-       clang::FileSystemOptions fileSysOpt;
-       clang::FileManager fm (fileSysOpt);
+  	DiagnosticOptions diagnosticOptions;
+ 	TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::nulls(), diagnosticOptions);
+	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());
+	Diagnostic diag(dis,tdp);
+ 	FileSystemOptions fileSysOpt;     
+	LangOptions lang;
+	lang.BCPLComment=1;
+	lang.CPlusPlus=1; 
+	FileManager fm (fileSysOpt);
 
-       clang::SourceManager sm ( diag, fm);
-       clang::HeaderSearch *headers = new clang::HeaderSearch(fm);
-       clang::CompilerInvocation::setLangDefaults(lang, clang::IK_ObjCXX);
+	SourceManager sm ( diag, fm);
+	HeaderSearch *headers = new HeaderSearch(fm);
+	CompilerInvocation::setLangDefaults(lang, IK_ObjCXX);
 
-       clang::HeaderSearchOptions hsopts;
-       hsopts.ResourceDir="/usr/local/lib/clang/2.9/";
+	HeaderSearchOptions hsopts;
+	hsopts.ResourceDir=LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
 	/*hsopts.AddPath("/usr/include/linux",
 			clang::frontend::Angled,
 			false,
@@ -116,33 +146,33 @@ int main(int argc, char *argv[])
 			false,
 			false,
 			false);*/
-       clang::TargetOptions to;
-       to.Triple = llvm::sys::getHostTriple();
-       clang::TargetInfo *ti = clang::TargetInfo::CreateTargetInfo(diag, to);
-       clang::ApplyHeaderSearchOptions(
-        *headers,
-        hsopts,
-        lang,
-        ti->getTriple());
+	TargetOptions to;
+	to.Triple = llvm::sys::getHostTriple();
+	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, to);
+	clang::ApplyHeaderSearchOptions(
+	*headers,
+	hsopts,
+	lang,
+	ti->getTriple());
 
 
-       clang::Preprocessor pp(diag, lang, *ti, sm, *headers);
-       clang::FrontendOptions f;
-       clang::PreprocessorOptions ppio;
-       clang::InitializePreprocessor(pp, ppio,hsopts,f);
-       const clang::FileEntry *file = fm.getFile("test.cpp");
-       sm.createMainFileID(file);
-       //pp.EnterMainSourceFile();
-       clang::IdentifierTable tab(lang);
-       clang::SelectorTable sel;
-       clang::Builtin::Context builtins(*ti);
-       FindStates c;
-       clang::ASTContext ctx(lang, sm, *ti, tab, sel, builtins,0);
-       tdp->BeginSourceFile(lang, &pp);
-       clang::ParseAST(pp, &c, ctx, false, false);
+	Preprocessor pp(diag, lang, *ti, sm, *headers);
+	FrontendOptions f;
+	PreprocessorOptions ppio;
+	InitializePreprocessor(pp, ppio,hsopts,f);
+	const FileEntry *file = fm.getFile("test.cpp");
+	sm.createMainFileID(file);
+	//pp.EnterMainSourceFile();
+	IdentifierTable tab(lang);
+	SelectorTable sel;
+	Builtin::Context builtins(*ti);
+	FindStates c;
+	ASTContext ctx(lang, sm, *ti, tab, sel, builtins,0);
+	tdp->BeginSourceFile(lang, &pp);
+	ParseAST(pp, &c, ctx, false, false);
 	tdp->EndSourceFile();
 
-       return 0;
+	return 0;
 
 
 }
