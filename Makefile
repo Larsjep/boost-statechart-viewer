@@ -5,10 +5,10 @@
 # Use our version of clang (even without installing)
 LLVM_BIN= $(CURDIR)/_install/bin
 
-LLVM_CONFIG := $(shell $(LLVM_BIN)/llvm-config --cxxflags --ldflags --libs all)
+LLVM_CONFIG := $(shell $(LLVM_BIN)/llvm-config --cxxflags --ldflags --libs jit core)
 
-g++ : bp.cpp
-	g++ bp.cpp -g -lclangParse -lclangFrontend -lclangSerialization \
+g++ : main.cpp
+	g++ visualizer.cpp -o visualizer -g -lclangParse -lclangFrontend -lclangSerialization \
 	-lclangDriver -lclangCodeGen -lclangSema -lclangChecker \
 	-lclangAnalysis -lclangRewrite -lclangAST -lclangLex -lclangBasic \
 	$(LLVM_CONFIG)

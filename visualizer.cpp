@@ -49,22 +49,21 @@
 #include "stringoper.h"
 
 using namespace clang;
-//globalni declaration
 
 
 class FindStates : public ASTConsumer
 {
 	public:
-	FileID mainF;
 	SourceLocation loc;
 	FullSourceLoc *fSloc;
-	virtual void Initialize(ASTContext &ctx)
+	
+	virtual void Initialize(ASTContext &ctx)//run after the AST is constructed
 	{	
 		SourceManager &sman = ctx.getSourceManager();
-		mainF = sman.getMainFileID();
 		fSloc = new FullSourceLoc(loc, sman);
 	}
-	virtual void HandleTopLevelDecl(DeclGroupRef DGR)
+
+	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
 	{
 		SourceLocation loc;
 		const SourceManager &sman = fSloc->getManager();
@@ -72,39 +71,64 @@ class FindStates : public ASTConsumer
 		std::string super_class;
 		for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
 		{
-			const Decl *D = *i;
-			loc = D->getLocation();
+			const Decl *decl = *i;
+			loc = decl->getLocation();
+				
 			if(sman.isFromMainFile(loc)) //only declaration in Main file interested us
 			{
-				Stmt *x = D->getBody();
-				const NamedDecl *ND = dyn_cast<NamedDecl>(D);;
-				if (const TagDecl *TD = dyn_cast<TagDecl>(D))
-				if(TD->isStruct() || TD->isClass()) //is it a structure or class
-				{	
-					line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
-					if(is_derived(line))
+				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
+				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
+				{
+					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
 					{
-						super_class = get_super_class(line);
-						if(is_state(super_class))
-						std::cout << "New state: " << ND->getNameAsString() << "\n";
-						//const DeclContext *dc = D->getDeclContext();
-						//std::cout<<<<"\n"; vypise data od radku s deklaraci, tzn, ze nas bude zajimat vsechno az do znaku \n
-					}
+						line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
+						if(is_derived(line))
+						{
+							super_class = get_super_class(line);
+							if(is_state(super_class))
+							{				
+								const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
+								if(cRecDecl->getNumBases()==1) //state is derived from one base class simple_state		
+								{							
+									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+									find_transitions(namedDecl->getNameAsString(), cRecDecl);
+								}
+							}
+						}
+					}	
 				}
 			}
 		}
-	/* TODO
-	Zjistit, zda je dedena?
-	Pokud ANO, tak projit strom dolu 
-	*/
 	}
-	
-};
 
+	void find_transitions (const std::string name_of_state, const CXXRecordDecl *cRecDecl) // traverse all methods for finding declarations of transitions
+	{	
+		std::string output, line, event, dest, params;	
+		llvm::raw_string_ostream x(output);
+		int pos;		
+		for (CXXRecordDecl::my_iterator i = cRecDecl->it_begin(), e = cRecDecl->it_end(); i != e; ++i) 
+		{
+			const Decl *decl = *i;	
+			const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
+			decl->print(x);
+			output = x.str();
+			if(count(output)==1)
+			{
+				line = clean_spaces(cut_typedef(output));
+				params = get_transition_params(line);
+				pos = params.find(",");
+				event = params.substr(0,pos);
+				dest = params.substr(pos+1);
+				if(is_transition(line))	std::cout << "New transition: " << name_of_state<<" -> "<<event<<" -> "<< dest<<"\n";
+			}
+			/* TODO else test na projiti*/
+		}	
+	}	
+};
 
 int main(int argc, char *argv[])
 {
-  	DiagnosticOptions diagnosticOptions;
+	DiagnosticOptions diagnosticOptions;
  	TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::nulls(), diagnosticOptions);
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());
 	Diagnostic diag(dis,tdp);
@@ -120,32 +144,11 @@ int main(int argc, char *argv[])
 
 	HeaderSearchOptions hsopts;
 	hsopts.ResourceDir=LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
-	/*hsopts.AddPath("/usr/include/linux",
-			clang::frontend::Angled,
-			false,
-			false,
-			false);	
-	hsopts.AddPath("/usr/include/c++/4.4",
-			clang::frontend::Angled,
-			false,
-			false,
-			false);
-	hsopts.AddPath("/usr/include/c++/4.4/tr1",
-			clang::frontend::Angled,
-			false,
-			false,
-			false);
-
 	hsopts.AddPath("/home/petr/Dokumenty/BOOST/boost_1_44_0",
 			clang::frontend::Angled,
 			false,
 			false,
 			false);
-	hsopts.AddPath("/usr/include/c++/4.4/i686-linux-gnu",
-			clang::frontend::Angled,
-			false,
-			false,
-			false);*/
 	TargetOptions to;
 	to.Triple = llvm::sys::getHostTriple();
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, to);
@@ -154,15 +157,12 @@ int main(int argc, char *argv[])
 	hsopts,
 	lang,
 	ti->getTriple());
-
-
 	Preprocessor pp(diag, lang, *ti, sm, *headers);
 	FrontendOptions f;
 	PreprocessorOptions ppio;
 	InitializePreprocessor(pp, ppio,hsopts,f);
 	const FileEntry *file = fm.getFile("test.cpp");
 	sm.createMainFileID(file);
-	//pp.EnterMainSourceFile();
 	IdentifierTable tab(lang);
 	SelectorTable sel;
 	Builtin::Context builtins(*ti);
@@ -171,8 +171,6 @@ int main(int argc, char *argv[])
 	tdp->BeginSourceFile(lang, &pp);
 	ParseAST(pp, &c, ctx, false, false);
 	tdp->EndSourceFile();
-
 	return 0;
-
 
 }

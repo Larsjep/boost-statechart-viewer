@@ -37,7 +37,7 @@ bool is_derived(const std::string line) // return true if the struct or class is
 	return false;
 }
 
-std::string get_super_class(const std::string line)
+std::string get_super_class(const std::string line) // get the super class of this declarations
 {
 	int i = 0;
 	for(i = 0;i<line.length()-1;i++)
@@ -54,7 +54,6 @@ std::string get_super_class(const std::string line)
 std::string clean_spaces(const std::string line)
 {
 	int i;
-	int j = 0;
 	std::string new_line = "";
 	for(i = 0;i<line.length();i++)
 	{
@@ -67,9 +66,9 @@ std::string clean_spaces(const std::string line)
 bool is_state(const std::string line)
 {
 	int pos = line.find("::");
-	if(pos==5)
+	if(pos==10)
 	{
-		if(line.compare(0,31,"boost::statechart::simple_state")==0)
+		if(line.compare(0,24,"statechart::simple_state")==0)
 		{
 			return true;	
 		}
@@ -87,7 +86,58 @@ bool is_state(const std::string line)
 	}
 	return false;
 }
-/*TODO
-boost::statechart::simple_state
-Pokud to neni ono, tak odstranim vse pred:: a zkusim nastrcit na simple_state
-*/
+// Transitions
+std::string cut_typedef(std::string line) // cut typedef from the beginning
+{
+	if(line.compare(0,8,"typedef ")==0)
+	{
+		return line.substr(8);
+	}
+	else return line;	
+}
+
+int count(std::string line) //count all < in string
+{
+	int number = 0;
+	for(int i = 0;i<line.length();i++)
+	{
+		if(line[i]=='<') number+=1;
+	}
+	return number;
+}
+
+bool is_transition(const std::string line)
+{
+	int pos = line.find("::");
+	if(pos==10)
+	{
+		if(line.compare(0,22,"statechart::transition")==0)
+		{
+			return true;	
+		}
+		else
+		{
+			std::string str = line.substr(pos+2);
+			if(str.compare(0,10,"transition")==0)return true;
+		}
+	}
+	else
+	{
+		std::string str = line.substr(pos+2);
+		//std::cout<<str;
+		if(str.compare(0,10,"transition")==0)return true;
+	}
+	return false;
+}
+
+std::string get_transition_params(std::string line)
+{
+	int pos_front = line.find("<")+1;
+	int pos_end = line.find(">");
+	std::string first[2];
+	std::string params;
+	params = line.substr(pos_front,pos_end-pos_front);
+	return params;
+	
+}
+
