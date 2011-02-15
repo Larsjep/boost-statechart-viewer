@@ -89,9 +89,10 @@ class FindStates : public ASTConsumer
 							{				
 								const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
 								if(cRecDecl->getNumBases()==1) //state is derived from one base class simple_state		
-								{							
+								{	
+									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);						
 									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
-									find_transitions(namedDecl->getNameAsString(), cRecDecl);
+									find_transitions(namedDecl->getNameAsString(), declCont);
 								}
 							}
 						}
@@ -101,25 +102,30 @@ class FindStates : public ASTConsumer
 		}
 	}
 
-	void find_transitions (const std::string name_of_state, const CXXRecordDecl *cRecDecl) // traverse all methods for finding declarations of transitions
+	void find_transitions (const std::string name_of_state,const DeclContext *declCont) // traverse all methods for finding declarations of transitions
 	{	
 		std::string output, line, event, dest, params;	
 		llvm::raw_string_ostream x(output);
 		int pos;		
-		for (CXXRecordDecl::my_iterator i = cRecDecl->it_begin(), e = cRecDecl->it_end(); i != e; ++i) 
+		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
 		{
-			const Decl *decl = *i;	
-			const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
-			decl->print(x);
-			output = x.str();
-			if(count(output)==1)
+			const Decl *decl = *i;
+			//decl->dump();
+			
+			if (const TypedefDecl *typeDecl = llvm::dyn_cast<TypedefDecl>(decl)) 
 			{
-				line = clean_spaces(cut_typedef(output));
-				params = get_transition_params(line);
-				pos = params.find(",");
-				event = params.substr(0,pos);
-				dest = params.substr(pos+1);
-				if(is_transition(line))	std::cout << "New transition: " << name_of_state<<" -> "<<event<<" -> "<< dest<<"\n";
+				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
+				decl->print(x);
+				output = x.str();
+				if(count(output)==1)
+				{
+					line = clean_spaces(cut_typedef(output));
+					params = get_transition_params(line);
+					pos = params.find(",");
+					event = params.substr(0,pos);
+					dest = params.substr(pos+1);
+					if(is_transition(line))	std::cout << "New transition: " << name_of_state<<" -> "<<event<<" -> "<< dest<<"\n";
+				}
 			}
 			/* TODO else test na projiti*/
 		}	
