@@ -68,37 +68,53 @@ class FindStates : public ASTConsumer
 		SourceLocation loc;
 		const SourceManager &sman = fSloc->getManager();
 		std::string line;
-		std::string super_class;
+		std::string super_class, output;
+		llvm::raw_string_ostream x(output);
 		for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
 		{
 			const Decl *decl = *i;
 			loc = decl->getLocation();
-				
-			if(sman.isFromMainFile(loc)) //only declaration in Main file interested us
+			const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
+			if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 			{
-				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
-				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
+				if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
 				{
-					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
+					const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
+					line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
+					if(is_derived(line))
 					{
-						line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
-						if(is_derived(line))
-						{
-							super_class = get_super_class(line);
-							if(is_state(super_class))
-							{				
-								const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
-								if(cRecDecl->getNumBases()==1) //state is derived from one base class simple_state		
-								{	
-									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);						
-									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
-									find_transitions(namedDecl->getNameAsString(), declCont);
-								}
-							}
+						if(find_states(cRecDecl, line))
+						{				
+							const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
+							std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+							find_transitions(namedDecl->getNameAsString(), declCont);
 						}
-					}	
+					}
+				}	
+			}
+		}
+	}
+	bool find_states(const CXXRecordDecl *cRecDecl, std::string line)
+	{	
+		std::string super_class = get_super_class(line), base;
+		if(cRecDecl->getNumBases()>1)
+		{
+			for(int i = 0; i<cRecDecl->getNumBases();i++ )
+			{
+				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
+				else base = super_class;
+				if(is_state(base)) return true;
+				else
+				{
+					super_class = get_next_base(super_class);
 				}
 			}
+			return false;
+		}
+		else
+		{ 
+			if(is_state(super_class)) return true;
+			else return false;
 		}
 	}
 
@@ -112,7 +128,7 @@ class FindStates : public ASTConsumer
 			const Decl *decl = *i;
 			//decl->dump();
 			
-			if (const TypedefDecl *typeDecl = llvm::dyn_cast<TypedefDecl>(decl)) 
+			if (const TypedefDecl *typeDecl = dyn_cast<TypedefDecl>(decl)) 
 			{
 				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
 				decl->print(x);
@@ -127,7 +143,6 @@ class FindStates : public ASTConsumer
 					if(is_transition(line))	std::cout << "New transition: " << name_of_state<<" -> "<<event<<" -> "<< dest<<"\n";
 				}
 			}
-			/* TODO else test na projiti*/
 		}	
 	}	
 };

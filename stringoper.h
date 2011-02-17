@@ -6,7 +6,7 @@ std::string get_line_of_code(const char* code) //return the line of code
 	int i;	
 	for(i = 0;i<ret.length();i++)
 	{
-		if(ret[i]=='\n') break;
+		if(ret[i]=='\n'||ret[i]=='{') break;
 	}	
 	return ret.substr(0,i);
 } 
@@ -50,6 +50,33 @@ std::string get_super_class(const std::string line) // get the super class of th
 	}
 	return line.substr(i+1);
 }
+
+std::string get_next_base(const std::string line) // get the super class of this declarations
+{
+	int i = 0;
+	int brackets = 0;
+	for(i = 0;i<line.length()-1;i++)
+	{
+		if(line[i]=='<') brackets+=1;
+		if(line[i]=='>') brackets-=1;
+		if(line[i]==',' && brackets == 0) break;
+	}
+	return line.substr(i+1);
+}  
+
+std::string get_first_base(const std::string line) // get the super class of this declarations
+{
+	int i = 0;
+	int brackets = 0;
+	for(i = 0;i<line.length()-1;i++)
+	{
+		if(line[i]=='<') brackets+=1;
+		if(line[i]=='>') brackets-=1;
+		if(line[i]==',' && brackets == 0) break;
+	}
+	return line.substr(0,i);
+}  
+
 
 std::string clean_spaces(const std::string line)
 {
