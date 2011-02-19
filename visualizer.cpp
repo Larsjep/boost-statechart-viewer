@@ -74,25 +74,80 @@ class FindStates : public ASTConsumer
 		{
 			const Decl *decl = *i;
 			loc = decl->getLocation();
-			const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
-			if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
+			if(loc.isValid())
 			{
-				if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
+				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
+				//std::cout<<decl->getDeclKindName()<<"\n";
+				if(!sman.isInSystemHeader(loc))
 				{
-					const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
-					line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
-					if(is_derived(line))
+					if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 					{
-						if(find_states(cRecDecl, line))
-						{				
-							const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
-							std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
-							find_transitions(namedDecl->getNameAsString(), declCont);
-						}
+						if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
+						{
+							const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
+							line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
+							if(is_derived(line))
+							{
+								if(find_states(cRecDecl, line))
+								{				
+									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
+									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+									find_transitions(namedDecl->getNameAsString(), declCont);
+								}
+							}
+						}	
 					}
-				}	
+					if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
+					{
+					
+							DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
+							//declCont->dumpDeclContext();				
+							recursive_visit(declCont);
+					
+					}
+				}
 			}
 		}
+	}
+	void recursive_visit(const DeclContext *declCont) //recursively visit all decls inside namespace
+	{
+		const SourceManager &sman = fSloc->getManager();
+		std::string line;
+		SourceLocation loc;
+		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i)
+		{
+			const Decl *decl = *i;
+			const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
+			
+			//std::cout<<"a "<<decl->getDeclKindName()<<"\n";
+			loc = decl->getLocation();
+			if(loc.isValid())
+			{			
+				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
+				{
+					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
+					{
+						const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
+						line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
+						if(is_derived(line))
+						{
+							if(find_states(cRecDecl, line))
+							{				
+								const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
+								std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+								find_transitions(namedDecl->getNameAsString(), declCont);
+							}
+						}
+					}	
+				}
+				if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
+				{
+					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
+					//declCont->dumpDeclContext();				
+					recursive_visit(declCont);
+				}
+			}
+		} 
 	}
 	bool find_states(const CXXRecordDecl *cRecDecl, std::string line)
 	{	
@@ -169,7 +224,7 @@ int main(int argc, char *argv[])
 			clang::frontend::Angled,
 			false,
 			false,
-			false);
+			true);
 	TargetOptions to;
 	to.Triple = llvm::sys::getHostTriple();
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, to);
