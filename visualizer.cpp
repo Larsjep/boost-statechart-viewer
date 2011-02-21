@@ -45,8 +45,11 @@
 #include "clang/Parse/ParseAST.h"
 #include "clang/Basic/Version.h"
 
+#include "llvm/Support/CommandLine.h"
+
 //my own header files
 #include "stringoper.h"
+#include "commandlineopt.h"
 
 using namespace clang;
 
@@ -175,28 +178,46 @@ class FindStates : public ASTConsumer
 
 	void find_transitions (const std::string name_of_state,const DeclContext *declCont) // traverse all methods for finding declarations of transitions
 	{	
-		std::string output, line, event, dest, params;	
+		std::string output, line, event, dest, params, base;	
 		llvm::raw_string_ostream x(output);
-		int pos;		
+		int pos;
+		int num;		
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
 		{
 			const Decl *decl = *i;
-			//decl->dump();
 			
 			if (const TypedefDecl *typeDecl = dyn_cast<TypedefDecl>(decl)) 
 			{
-				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
-				decl->print(x);
-				output = x.str();
-				if(count(output)==1)
-				{
+					decl->print(x);
+					output = x.str();
 					line = clean_spaces(cut_typedef(output));
-					params = get_transition_params(line);
-					pos = params.find(",");
-					event = params.substr(0,pos);
-					dest = params.substr(pos+1);
-					if(is_transition(line))	std::cout << "New transition: " << name_of_state<<" -> "<<event<<" -> "<< dest<<"\n";
-				}
+					num = count(output);					
+					if(num>1)
+					{
+						num-=1;
+						if(is_list(line))
+						{
+							line = get_inner_part(line);
+						}
+					}
+					for(int j = 0;j<num;j++)
+					{
+						if(j!=num-1) base = get_first_base(line);			
+						else base = line;
+						if(is_transition(base))
+						{
+							params = get_transition_params(line);
+							pos = params.find(",");
+							event = params.substr(0,pos);
+							dest = params.substr(pos+1);
+							std::cout << "New transition: " << name_of_state<<" -> "<<event<<" -> "<< dest<<"\n";
+							line = get_next_base(line);
+						}
+						else
+						{
+							line = get_next_base(line);
+						}
+					}
 			}
 		}	
 	}	
@@ -204,6 +225,7 @@ class FindStates : public ASTConsumer
 
 int main(int argc, char *argv[])
 {
+	llvm::cl::ParseCommandLineOptions(argc, argv);	
 	DiagnosticOptions diagnosticOptions;
  	TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::nulls(), diagnosticOptions);
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());
@@ -220,11 +242,14 @@ int main(int argc, char *argv[])
 
 	HeaderSearchOptions hsopts;
 	hsopts.ResourceDir=LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
-	hsopts.AddPath("/home/petr/Dokumenty/BOOST/boost_1_44_0",
-			clang::frontend::Angled,
-			false,
-			false,
-			true);
+	for(int i = 0; i<includeFiles.size();i++)
+	{	
+		hsopts.AddPath(includeFiles[i],
+				clang::frontend::Angled,
+				false,
+				false,
+				true);
+	}
 	TargetOptions to;
 	to.Triple = llvm::sys::getHostTriple();
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, to);

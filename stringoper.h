@@ -133,6 +133,52 @@ int count(std::string line) //count all < in string
 	return number;
 }
 
+bool is_list(const std::string line)
+{
+	int pos = line.find("::");
+	if(pos==10)
+	{
+		if(line.compare(0,9,"mpl::list")==0)
+		{
+			return true;	
+		}
+		else
+		{
+			std::string str = line.substr(pos+2);
+			if(str.compare(0,4,"list")==0)return true;
+		}
+	}
+	else
+	{
+		std::string str = line.substr(pos+2);
+		//std::cout<<str;
+		if(str.compare(0,4,"list")==0)return true;
+	}
+	return false;
+}
+
+std::string get_inner_part(const std::string line)
+{
+	std::string str;
+	int i, pos = 0;
+	for(i = 0;i<line.length();i++)
+	{
+		if(line[i]=='<') break;
+	}
+	str = line.substr(i+1);
+	for(i = 0;i<str.length();i++)
+	{
+		if(str[i]=='<') pos+=1;
+		if(str[i]=='>')
+		{ 
+			if(pos==0) break;
+			else pos-=1;
+		}
+	}
+	//std::cout<<str.substr(0,i);
+	return str.substr(0,i);
+}
+
 bool is_transition(const std::string line)
 {
 	int pos = line.find("::");
