@@ -1,9 +1,10 @@
 #include <string>
 
-std::string get_line_of_code(const char* code) //return the line of code
+std::string get_line_of_code(const std::string code) //return the line of code
 {
 	std::string ret = code;	
 	int i;	
+	//std::cout<<code<<"\n\n";
 	for(i = 0;i<ret.length();i++)
 	{
 		if(ret[i]=='\n'||ret[i]=='{') break;
@@ -21,6 +22,13 @@ std::string cut_commentary(const std::string line) //cut commentary at the end o
 	}
 	return line;
 
+}
+
+std::string cut_namespaces(std::string line) //cut namespaces from the name of the state
+{
+	int i = line.rfind("::");
+	if(i==-1) return line;
+	return line.substr(i+2);
 }
 
 bool is_derived(const std::string line) // return true if the struct or class is derived
@@ -93,7 +101,18 @@ std::string clean_spaces(const std::string line)
 bool is_state(const std::string line)
 {
 	int pos = line.find("::");
-	if(pos==10)
+	if(pos == 5)
+	{
+		if(line.compare(0,31,"boost::statechart::simple_state")==0)
+		{
+			return true;	
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
 	{
 		if(line.compare(0,24,"statechart::simple_state")==0)
 		{
@@ -101,17 +120,9 @@ bool is_state(const std::string line)
 		}
 		else
 		{
-			std::string str = line.substr(pos+2);
-			if(str.compare(0,12,"simple_state")==0)return true;
+			return false;
 		}
 	}
-	else
-	{
-		std::string str = line.substr(pos+2);
-		//std::cout<<str;
-		if(str.compare(0,12,"simple_state")==0)return true;
-	}
-	return false;
 }
 // Transitions
 std::string cut_typedef(std::string line) // cut typedef from the beginning
@@ -136,25 +147,25 @@ int count(std::string line) //count all < in string
 bool is_list(const std::string line)
 {
 	int pos = line.find("::");
-	if(pos==10)
+	if(pos == 5)
 	{
-		if(line.compare(0,9,"mpl::list")==0)
+		if(line.compare(0,16,"boost::mpl::list")==0)
 		{
 			return true;	
 		}
 		else
 		{
-			std::string str = line.substr(pos+2);
-			if(str.compare(0,4,"list")==0)return true;
+			return false;
 		}
+	}
+	if(line.compare(0,9,"mpl::list")==0)
+	{
+		return true;	
 	}
 	else
 	{
-		std::string str = line.substr(pos+2);
-		//std::cout<<str;
-		if(str.compare(0,4,"list")==0)return true;
+		return false;
 	}
-	return false;
 }
 
 std::string get_inner_part(const std::string line)
@@ -182,25 +193,28 @@ std::string get_inner_part(const std::string line)
 bool is_transition(const std::string line)
 {
 	int pos = line.find("::");
-	if(pos==10)
+	if(pos == 5)
 	{
+		if(line.compare(0,29,"boost::statechart::transition")==0)
+		{
+			return true;	
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
+	{	
 		if(line.compare(0,22,"statechart::transition")==0)
 		{
 			return true;	
 		}
 		else
 		{
-			std::string str = line.substr(pos+2);
-			if(str.compare(0,10,"transition")==0)return true;
+			return false;
 		}
 	}
-	else
-	{
-		std::string str = line.substr(pos+2);
-		//std::cout<<str;
-		if(str.compare(0,10,"transition")==0)return true;
-	}
-	return false;
 }
 
 std::string get_transition_params(std::string line)

@@ -1,4 +1,8 @@
 #include <iostream>
+#include <string>
+#include <fstream>
+#include <list>
+
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/System/Host.h"
@@ -56,20 +60,18 @@ using namespace clang;
 
 class FindStates : public ASTConsumer
 {
+	std::list<string> transitions;
+	std::list<string> events;
+	std::list<string> states;
 	public:
-	SourceLocation loc;
-	FullSourceLoc *fSloc;
-	
+
 	virtual void Initialize(ASTContext &ctx)//run after the AST is constructed
 	{	
-		SourceManager &sman = ctx.getSourceManager();
-		fSloc = new FullSourceLoc(loc, sman);
 	}
 
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
 	{
 		SourceLocation loc;
-		const SourceManager &sman = fSloc->getManager();
 		std::string line;
 		std::string super_class, output;
 		llvm::raw_string_ostream x(output);
@@ -81,42 +83,41 @@ class FindStates : public ASTConsumer
 			{
 				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
 				//std::cout<<decl->getDeclKindName()<<"\n";
-				if(!sman.isInSystemHeader(loc))
+				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
-					if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
+					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
 					{
-						if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
+						const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
+						decl->print(x);
+						//decl->dump();							
+						line = cut_commentary(clean_spaces(get_line_of_code(x.str())));
+						output = "";
+						if(is_derived(line))
 						{
-							const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
-							line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
-							if(is_derived(line))
-							{
-								if(find_states(cRecDecl, line))
-								{				
-									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
-									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
-									find_transitions(namedDecl->getNameAsString(), declCont);
-								}
+							if(find_states(cRecDecl, line))
+							{				
+								const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
+								std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+								find_transitions(namedDecl->getNameAsString(), declCont);
 							}
-						}	
+						}
 					}
-					if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
-					{
-					
-							DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
-							//declCont->dumpDeclContext();				
-							recursive_visit(declCont);
-					
-					}
+				}	
+				if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
+				{
+					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
+					//declCont->dumpDeclContext();				
+					recursive_visit(declCont);
+				
 				}
 			}
 		}
 	}
 	void recursive_visit(const DeclContext *declCont) //recursively visit all decls inside namespace
 	{
-		const SourceManager &sman = fSloc->getManager();
-		std::string line;
+		std::string line, output;
 		SourceLocation loc;
+		llvm::raw_string_ostream x(output);
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i)
 		{
 			const Decl *decl = *i;
@@ -131,13 +132,16 @@ class FindStates : public ASTConsumer
 					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
 					{
 						const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
-						line = cut_commentary(clean_spaces(get_line_of_code(sman.getCharacterData(loc))));
+						decl->print(x);
+						line = cut_commentary(clean_spaces(get_line_of_code(x.str())));
+						output = "";
 						if(is_derived(line))
 						{
 							if(find_states(cRecDecl, line))
 							{				
 								const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
-								std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+								states.push_back(namedDecl->getNameAsString());
+								//std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
 								find_transitions(namedDecl->getNameAsString(), declCont);
 							}
 						}
@@ -176,7 +180,7 @@ class FindStates : public ASTConsumer
 		}
 	}
 
-	void find_transitions (const std::string name_of_state,const DeclContext *declCont) // traverse all methods for finding declarations of transitions
+	void find_transitions (std::string name_of_state,const DeclContext *declCont) // traverse all methods for finding declarations of transitions
 	{	
 		std::string output, line, event, dest, params, base;	
 		llvm::raw_string_ostream x(output);
@@ -207,11 +211,10 @@ class FindStates : public ASTConsumer
 						if(is_transition(base))
 						{
 							params = get_transition_params(line);
-							pos = params.find(",");
-							event = params.substr(0,pos);
-							dest = params.substr(pos+1);
-							std::cout << "New transition: " << name_of_state<<" -> "<<event<<" -> "<< dest<<"\n";
-							line = get_next_base(line);
+							name_of_state.append(",");							
+							name_of_state.append(params);
+							transitions.push_back(name_of_state);	
+							break;
 						}
 						else
 						{
@@ -220,12 +223,31 @@ class FindStates : public ASTConsumer
 					}
 			}
 		}	
+	}
+	void save_to_file(std::string output)
+	{
+		std::string state;
+		int pos;
+		std::ofstream filestr(output.c_str());
+		std::cout<<output<<"\n";
+		filestr<<"digraph G {\n";
+		for(list<string>::iterator i = transitions.begin();i!=transitions.end();i++)
+		{
+			state = *i;
+			pos = state.find(",");
+			filestr<<cut_namespaces(state.substr(0,pos))<<"->";
+			pos = state.rfind(",");
+			filestr<<cut_namespaces(state.substr(pos+1))<<";\n";
+		}
+		filestr<<"}";
+		filestr.close();
 	}	
 };
 
 int main(int argc, char *argv[])
 {
 	llvm::cl::ParseCommandLineOptions(argc, argv);	
+	std::cout<<"Input file: "<<inputFilename<<"\n";	
 	DiagnosticOptions diagnosticOptions;
  	TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::nulls(), diagnosticOptions);
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());
@@ -262,7 +284,7 @@ int main(int argc, char *argv[])
 	FrontendOptions f;
 	PreprocessorOptions ppio;
 	InitializePreprocessor(pp, ppio,hsopts,f);
-	const FileEntry *file = fm.getFile("test.cpp");
+	const FileEntry *file = fm.getFile(inputFilename);
 	sm.createMainFileID(file);
 	IdentifierTable tab(lang);
 	SelectorTable sel;
@@ -272,6 +294,8 @@ int main(int argc, char *argv[])
 	tdp->BeginSourceFile(lang, &pp);
 	ParseAST(pp, &c, ctx, false, false);
 	tdp->EndSourceFile();
+	
+	c.save_to_file(outputFile);
 	return 0;
 
 }
