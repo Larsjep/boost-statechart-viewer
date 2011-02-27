@@ -217,14 +217,39 @@ bool is_transition(const std::string line)
 	}
 }
 
-std::string get_transition_params(std::string line)
+std::string get_params(std::string line)
 {
 	int pos_front = line.find("<")+1;
 	int pos_end = line.find(">");
-	std::string first[2];
 	std::string params;
 	params = line.substr(pos_front,pos_end-pos_front);
 	return params;
 	
 }
 
+bool is_machine(const std::string line)
+{
+	int pos = line.find("::");
+	if(pos == 5)
+	{
+		if(line.compare(0,32,"boost::statechart::state_machine")==0)
+		{
+			return true;	
+		}
+		else
+		{
+			return false;
+		}
+	}
+	else
+	{	
+		if(line.compare(0,25,"statechart::state_machine")==0)
+		{
+			return true;	
+		}
+		else
+		{
+			return false;
+		}
+	}
+}

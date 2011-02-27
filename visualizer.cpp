@@ -63,10 +63,14 @@ class FindStates : public ASTConsumer
 	std::list<string> transitions;
 	std::list<string> events;
 	std::list<string> states;
+	std::string name_of_machine;
+	std::string name_of_start;
 	public:
 
 	virtual void Initialize(ASTContext &ctx)//run after the AST is constructed
 	{	
+		name_of_start = "";
+		name_of_machine = "";
 	}
 
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
@@ -94,11 +98,18 @@ class FindStates : public ASTConsumer
 						output = "";
 						if(is_derived(line))
 						{
-							if(find_states(cRecDecl, line))
-							{				
-								const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
-								std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
-								find_transitions(namedDecl->getNameAsString(), declCont);
+							if(name_of_machine == "")
+							{
+								find_name_of_machine(cRecDecl, line);
+							}
+							else
+							{
+								if(find_states(cRecDecl, line))
+								{				
+									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
+									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+									find_transitions(namedDecl->getNameAsString(), declCont);
+								}
 							}
 						}
 					}
@@ -137,12 +148,19 @@ class FindStates : public ASTConsumer
 						output = "";
 						if(is_derived(line))
 						{
-							if(find_states(cRecDecl, line))
-							{				
-								const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
-								states.push_back(namedDecl->getNameAsString());
-								//std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
-								find_transitions(namedDecl->getNameAsString(), declCont);
+							if(name_of_machine == "")
+							{
+								find_name_of_machine(cRecDecl, line);
+							}
+							else
+							{
+								if(find_states(cRecDecl, line))
+								{				
+									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
+									states.push_back(namedDecl->getNameAsString());
+									//std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+									find_transitions(namedDecl->getNameAsString(), declCont);
+								}
 							}
 						}
 					}	
@@ -158,7 +176,7 @@ class FindStates : public ASTConsumer
 	}
 	bool find_states(const CXXRecordDecl *cRecDecl, std::string line)
 	{	
-		std::string super_class = get_super_class(line), base;
+		std::string super_class = get_super_class(line), base;		
 		if(cRecDecl->getNumBases()>1)
 		{
 			for(int i = 0; i<cRecDecl->getNumBases();i++ )
@@ -177,6 +195,46 @@ class FindStates : public ASTConsumer
 		{ 
 			if(is_state(super_class)) return true;
 			else return false;
+		}
+	}
+		
+	void find_name_of_machine(const CXXRecordDecl *cRecDecl, std::string line)
+	{	
+		std::string super_class = get_super_class(line), base, params;
+		
+		int pos = 0;
+		if(cRecDecl->getNumBases()>1)
+		{
+			for(int i = 0; i<cRecDecl->getNumBases();i++ )
+			{
+				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
+				else base = super_class;
+				if(is_machine(base))
+				{
+					params = get_params(base);
+					//std::cout<<params;
+					pos = params.find(",");
+					name_of_machine = params.substr(0,pos);
+					name_of_start = params.substr(pos);
+					//std::cout<<name_of_start;
+				}
+				else
+				{
+					super_class = get_next_base(super_class);
+				}
+			}
+		}
+		else
+		{ 
+			if(is_machine(super_class))
+			{
+				//std::cout<<super_class;
+				params = get_params(super_class);
+				//std::cout<<params;
+				pos = params.find(",");
+				name_of_machine = cut_namespaces(params.substr(0,pos));
+				name_of_start = cut_namespaces(params.substr(pos+1));
+			}
 		}
 	}
 
@@ -210,11 +268,11 @@ class FindStates : public ASTConsumer
 						else base = line;
 						if(is_transition(base))
 						{
-							params = get_transition_params(line);
+							params = get_params(base);
 							name_of_state.append(",");							
 							name_of_state.append(params);
-							transitions.push_back(name_of_state);	
-							break;
+							transitions.push_back(name_of_state);
+							line = get_next_base(line);
 						}
 						else
 						{
@@ -230,7 +288,7 @@ class FindStates : public ASTConsumer
 		int pos;
 		std::ofstream filestr(output.c_str());
 		std::cout<<output<<"\n";
-		filestr<<"digraph G {\n";
+		filestr<<"digraph "<< name_of_machine<< " {\n";
 		for(list<string>::iterator i = transitions.begin();i!=transitions.end();i++)
 		{
 			state = *i;
@@ -239,6 +297,7 @@ class FindStates : public ASTConsumer
 			pos = state.rfind(",");
 			filestr<<cut_namespaces(state.substr(pos+1))<<";\n";
 		}
+		filestr<<name_of_start<<" [color=\"red\"] ;\n";
 		filestr<<"}";
 		filestr.close();
 	}	
