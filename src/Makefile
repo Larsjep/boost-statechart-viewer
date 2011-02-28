@@ -12,7 +12,10 @@ visualizer: visualizer.cpp commandlineopt.h stringoper.h
 	$(LLVM_CONFIG)
 
 .PHONY: test
-test: test.dot
+test: test.pdf
 
 %.dot: %.cpp visualizer
 	./visualizer $< -o $@
+
+%.pdf: %.dot
+	dot -Tps $< | epstopdf --filter > $@
