@@ -158,7 +158,7 @@ class FindStates : public ASTConsumer
 								{				
 									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
 									states.push_back(namedDecl->getNameAsString());
-									//std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
+									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
 									find_transitions(namedDecl->getNameAsString(), declCont);
 								}
 							}
@@ -212,11 +212,11 @@ class FindStates : public ASTConsumer
 				if(is_machine(base))
 				{
 					params = get_params(base);
-					//std::cout<<params;
 					pos = params.find(",");
 					name_of_machine = params.substr(0,pos);
 					name_of_start = params.substr(pos);
-					//std::cout<<name_of_start;
+					std::cout<<"Name of the state machine: "<<name_of_machine<<"\n";
+					std::cout<<"Name of the first state: "<<name_of_start<<"\n";
 				}
 				else
 				{
@@ -234,13 +234,15 @@ class FindStates : public ASTConsumer
 				pos = params.find(",");
 				name_of_machine = cut_namespaces(params.substr(0,pos));
 				name_of_start = cut_namespaces(params.substr(pos+1));
+				std::cout<<"Name of the state machine:"<<name_of_machine<<"\n";
+				std::cout<<"Name of the first state:"<<name_of_start<<"\n";
 			}
 		}
 	}
 
-	void find_transitions (std::string name_of_state,const DeclContext *declCont) // traverse all methods for finding declarations of transitions
+	void find_transitions (const std::string name_of_state,const DeclContext *declCont) // traverse all methods for finding declarations of transitions
 	{	
-		std::string output, line, event, dest, params, base;	
+		std::string output, line, dest, params, base;	
 		llvm::raw_string_ostream x(output);
 		int pos;
 		int num;		
@@ -268,10 +270,11 @@ class FindStates : public ASTConsumer
 						else base = line;
 						if(is_transition(base))
 						{
+							dest = name_of_state;
 							params = get_params(base);
-							name_of_state.append(",");							
-							name_of_state.append(params);
-							transitions.push_back(name_of_state);
+							dest.append(",");							
+							dest.append(params);
+							transitions.push_back(dest);
 							line = get_next_base(line);
 						}
 						else
@@ -285,19 +288,20 @@ class FindStates : public ASTConsumer
 	void save_to_file(std::string output)
 	{
 		std::string state;
-		int pos;
+		int pos1, pos2;
 		std::ofstream filestr(output.c_str());
 		std::cout<<output<<"\n";
 		filestr<<"digraph "<< name_of_machine<< " {\n";
 		for(list<string>::iterator i = transitions.begin();i!=transitions.end();i++)
 		{
 			state = *i;
-			pos = state.find(",");
-			filestr<<cut_namespaces(state.substr(0,pos))<<"->";
-			pos = state.rfind(",");
-			filestr<<cut_namespaces(state.substr(pos+1))<<";\n";
+			pos1 = state.find(",");
+			filestr<<cut_namespaces(state.substr(0,pos1))<<"->";
+			pos2 = state.rfind(",");
+			filestr<<cut_namespaces(state.substr(pos2+1));
+			filestr<<"[label=\""<<cut_namespaces(state.substr(pos1+1,pos2-pos1-1))<<"\"];\n";
 		}
-		filestr<<name_of_start<<" [color=\"red\"] ;\n";
+		filestr<<name_of_start<<" [peripheries=2] ;\n";
 		filestr<<"}";
 		filestr.close();
 	}	
