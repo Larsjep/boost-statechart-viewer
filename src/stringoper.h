@@ -134,12 +134,12 @@ std::string cut_typedef(std::string line) // cut typedef from the beginning
 	else return line;	
 }
 
-int count(std::string line) //count all < in string
+int count(const std::string line, const char c) //count all < in string
 {
 	int number = 0;
 	for(int i = 0;i<line.length();i++)
 	{
-		if(line[i]=='<') number+=1;
+		if(line[i]==c) number+=1;
 	}
 	return number;
 }

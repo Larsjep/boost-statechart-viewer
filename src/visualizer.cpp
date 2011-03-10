@@ -157,7 +157,7 @@ class FindStates : public ASTConsumer
 								if(find_states(cRecDecl, line))
 								{				
 									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
-									states.push_back(namedDecl->getNameAsString());
+									//states.push_back(namedDecl->getNameAsString());
 									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
 									find_transitions(namedDecl->getNameAsString(), declCont);
 								}
@@ -183,7 +183,12 @@ class FindStates : public ASTConsumer
 			{
 				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
 				else base = super_class;
-				if(is_state(base)) return true;
+				if(is_state(super_class)) 
+				{
+					//std::cout<<get_params(super_class);
+					states.push_back(get_params(super_class));
+					return true;
+				}
 				else
 				{
 					super_class = get_next_base(super_class);
@@ -193,7 +198,12 @@ class FindStates : public ASTConsumer
 		}
 		else
 		{ 
-			if(is_state(super_class)) return true;
+			if(is_state(super_class)) 
+			{
+				//std::cout<<get_params(super_class);
+				states.push_back(get_params(super_class));
+				return true;
+			}
 			else return false;
 		}
 	}
@@ -255,7 +265,7 @@ class FindStates : public ASTConsumer
 					decl->print(x);
 					output = x.str();
 					line = clean_spaces(cut_typedef(output));
-					num = count(output);					
+					num = count(output,'<');					
 					if(num>1)
 					{
 						num-=1;
@@ -287,11 +297,82 @@ class FindStates : public ASTConsumer
 	}
 	void save_to_file(std::string output)
 	{
-		std::string state;
-		int pos1, pos2;
+		std::string state, str, context, ctx;
+		int pos1, pos2, cnt, subs;
 		std::ofstream filestr(output.c_str());
 		std::cout<<output<<"\n";
 		filestr<<"digraph "<< name_of_machine<< " {\n";
+		context = name_of_machine;
+		for(list<string>::iterator i = states.begin();i!=states.end();i++)
+		{
+			state = *i;
+			cnt = count(state,',');
+			if(cnt==1)
+			{
+				pos1 = state.find(",");
+				ctx = cut_namespaces(state.substr(pos1+1));
+				//std::cout<<name_of_machine.length();				
+				if(ctx.compare(0,context.length(),context)==0)
+				{
+					filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
+					states.erase(i);
+					i--;
+				}
+			}
+			if(cnt==2)
+			{
+				pos1 = state.find(",");
+				pos2 = state.rfind(",");
+				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
+				if(ctx.compare(0,context.length(),context))
+				{				
+					filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
+				}
+			}
+		}
+		filestr<<name_of_start<<" [peripheries=2] ;\n";
+		subs = 0;
+		while(!states.empty())
+		{
+			state = states.front();
+			filestr<<"subgraph cluster"<<subs<<" {\n";			
+			pos1 = state.find(",");
+			pos2 = state.rfind(",");
+			context = cut_namespaces(state.substr(0,pos1));
+			filestr<<"label=\""<<context<<"\";\n";
+			filestr<<cut_namespaces(state.substr(pos2+1))<<" [peripheries=2] ;\n";	
+			states.pop_front();	
+			//std::cout<<states.size();	
+			for(list<string>::iterator i = states.begin();i!=states.end();i++)
+			{
+				state = *i;
+				cnt = count(state,',');
+				//std::cout<<state<<"\n";
+				if(cnt==1)
+				{
+					pos1 = state.find(",");
+					ctx = cut_namespaces(state.substr(pos1+1));
+					if(ctx.compare(0,context.length(),context)==0)
+					{
+						filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
+					}
+					states.erase(i);
+					i--;
+				}
+				if(cnt==2)
+				{
+					pos1 = state.find(",");
+					pos2 = state.rfind(",");
+					ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
+					if(ctx.compare(0,context.length(),context))
+					{				
+						filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
+					}
+				}
+			}
+			filestr<<"}\n";
+			subs+=1;	
+		}		
 		for(list<string>::iterator i = transitions.begin();i!=transitions.end();i++)
 		{
 			state = *i;
@@ -300,11 +381,10 @@ class FindStates : public ASTConsumer
 			pos2 = state.rfind(",");
 			filestr<<cut_namespaces(state.substr(pos2+1));
 			filestr<<"[label=\""<<cut_namespaces(state.substr(pos1+1,pos2-pos1-1))<<"\"];\n";
-		}
-		filestr<<name_of_start<<" [peripheries=2] ;\n";
+		}		
 		filestr<<"}";
 		filestr.close();
-	}	
+	}
 };
 
 int main(int argc, char *argv[])
