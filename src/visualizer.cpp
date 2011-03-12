@@ -324,7 +324,8 @@ class FindStates : public ASTConsumer
 				pos1 = state.find(",");
 				pos2 = state.rfind(",");
 				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-				if(ctx.compare(0,context.length(),context))
+				//std::cout<<ctx<<" "<<context<<"\n";
+				if(ctx.compare(0,context.length(),context)==0)
 				{				
 					filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
 				}
@@ -347,26 +348,29 @@ class FindStates : public ASTConsumer
 			{
 				state = *i;
 				cnt = count(state,',');
-				//std::cout<<state<<"\n";
+				//std::cout<<state<<" \n";
 				if(cnt==1)
 				{
 					pos1 = state.find(",");
 					ctx = cut_namespaces(state.substr(pos1+1));
+					
+					//std::cout<<ctx<<" "<<context<<"\n";
 					if(ctx.compare(0,context.length(),context)==0)
 					{
 						filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
+						states.erase(i);
+						i--;
 					}
-					states.erase(i);
-					i--;
 				}
 				if(cnt==2)
 				{
 					pos1 = state.find(",");
 					pos2 = state.rfind(",");
 					ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-					if(ctx.compare(0,context.length(),context))
+					if(ctx.compare(0,context.length(),context)==0)
 					{				
 						filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
+						//std::cout<<ctx<<"\n";
 					}
 				}
 			}
