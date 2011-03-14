@@ -412,7 +412,7 @@ int main(int argc, char *argv[])
 	HeaderSearchOptions hsopts;
 	hsopts.ResourceDir=LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
 	for(int i = 0; i<includeFiles.size();i++)
-	{	
+	{
 		hsopts.AddPath(includeFiles[i],
 				clang::frontend::Angled,
 				false,
