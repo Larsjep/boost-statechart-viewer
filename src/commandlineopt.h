@@ -19,5 +19,5 @@ llvm::cl::list<std::string> D_macros("D", llvm::cl::value_desc("macro"), llvm::c
 llvm::cl::list<std::string> U_macros("U", llvm::cl::value_desc("macro"), llvm::cl::Prefix, llvm::cl::desc("Undefine the specified macro"));
 
 
-llvm::cl::opt<string> other(llvm::cl::Sink, llvm::cl::desc("other arguments")); // other arguments are thrown away
+llvm::cl::list<string> other(llvm::cl::Sink, llvm::cl::desc("other arguments")); // other arguments are thrown away
 
