@@ -3,7 +3,7 @@
 std::string get_line_of_code(const std::string code) //return the line of code
 {
 	std::string ret = code;	
-	int i;	
+	unsigned i;	
 	//std::cout<<code<<"\n\n";
 	for(i = 0;i<ret.length();i++)
 	{
@@ -14,7 +14,7 @@ std::string get_line_of_code(const std::string code) //return the line of code
 
 std::string cut_commentary(const std::string line) //cut commentary at the end of line
 {
-	int i = 0;
+	unsigned i = 0;
 	for(i = 0;i<line.length()-1;i++)
 	{
 		if(line[i]=='/' && line[i+1]=='/') return line.substr(0,i);
@@ -33,7 +33,7 @@ std::string cut_namespaces(std::string line) //cut namespaces from the name of t
 
 bool is_derived(const std::string line) // return true if the struct or class is derived
 {
-	int i = 0;
+	unsigned i;
 	for(i = 0;i<line.length()-1;i++)
 	{
 		if(line[i]==':')
@@ -47,7 +47,7 @@ bool is_derived(const std::string line) // return true if the struct or class is
 
 std::string get_super_class(const std::string line) // get the super class of this declarations
 {
-	int i = 0;
+	unsigned i;
 	for(i = 0;i<line.length()-1;i++)
 	{
 		if(line[i]==':')
@@ -61,7 +61,7 @@ std::string get_super_class(const std::string line) // get the super class of th
 
 std::string get_next_base(const std::string line) // get the super class of this declarations
 {
-	int i = 0;
+	unsigned i;
 	int brackets = 0;
 	for(i = 0;i<line.length()-1;i++)
 	{
@@ -74,7 +74,7 @@ std::string get_next_base(const std::string line) // get the super class of this
 
 std::string get_first_base(const std::string line) // get the super class of this declarations
 {
-	int i = 0;
+	unsigned i;
 	int brackets = 0;
 	for(i = 0;i<line.length()-1;i++)
 	{
@@ -88,7 +88,7 @@ std::string get_first_base(const std::string line) // get the super class of thi
 
 std::string clean_spaces(const std::string line)
 {
-	int i;
+	unsigned i;
 	std::string new_line = "";
 	for(i = 0;i<line.length();i++)
 	{
@@ -137,7 +137,7 @@ std::string cut_typedef(std::string line) // cut typedef from the beginning
 int count(const std::string line, const char c) //count all < in string
 {
 	int number = 0;
-	for(int i = 0;i<line.length();i++)
+	for(unsigned i = 0;i<line.length();i++)
 	{
 		if(line[i]==c) number+=1;
 	}
@@ -171,7 +171,7 @@ bool is_list(const std::string line)
 std::string get_inner_part(const std::string line)
 {
 	std::string str;
-	int i, pos = 0;
+	unsigned i, pos = 0;
 	for(i = 0;i<line.length();i++)
 	{
 		if(line[i]=='<') break;

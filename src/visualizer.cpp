@@ -124,7 +124,7 @@ class FindStates : public ASTConsumer
 			}
 		}
 	}
-	void recursive_visit(const DeclContext *declCont) //recursively visit all decls inside namespace
+	void recursive_visit(const DeclContext *declCont) //recursively visit all decls hidden inside namespaces
 	{
 		std::string line, output;
 		SourceLocation loc;
@@ -174,12 +174,12 @@ class FindStates : public ASTConsumer
 			}
 		} 
 	}
-	bool find_states(const CXXRecordDecl *cRecDecl, std::string line)
+	bool find_states(const CXXRecordDecl *cRecDecl, std::string line) // test if the struct/class is the state (must be derived from simple_state)
 	{	
 		std::string super_class = get_super_class(line), base;		
 		if(cRecDecl->getNumBases()>1)
 		{
-			for(int i = 0; i<cRecDecl->getNumBases();i++ )
+			for(unsigned i = 0; i<cRecDecl->getNumBases();i++ )
 			{
 				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
 				else base = super_class;
@@ -208,14 +208,14 @@ class FindStates : public ASTConsumer
 		}
 	}
 		
-	void find_name_of_machine(const CXXRecordDecl *cRecDecl, std::string line)
+	void find_name_of_machine(const CXXRecordDecl *cRecDecl, std::string line) // find name of the state machine and the start state
 	{	
 		std::string super_class = get_super_class(line), base, params;
 		
 		int pos = 0;
 		if(cRecDecl->getNumBases()>1)
 		{
-			for(int i = 0; i<cRecDecl->getNumBases();i++ )
+			for(unsigned i = 0; i<cRecDecl->getNumBases();i++ )
 			{
 				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
 				else base = super_class;
@@ -254,13 +254,12 @@ class FindStates : public ASTConsumer
 	{	
 		std::string output, line, dest, params, base;	
 		llvm::raw_string_ostream x(output);
-		int pos;
 		int num;		
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
 		{
 			const Decl *decl = *i;
 			
-			if (const TypedefDecl *typeDecl = dyn_cast<TypedefDecl>(decl)) 
+			if (const TypedefDecl *typedDecl = dyn_cast<TypedefDecl>(decl)) 
 			{
 					decl->print(x);
 					output = x.str();
@@ -303,7 +302,7 @@ class FindStates : public ASTConsumer
 		std::cout<<output<<"\n";
 		filestr<<"digraph "<< name_of_machine<< " {\n";
 		context = name_of_machine;
-		for(list<string>::iterator i = states.begin();i!=states.end();i++)
+		for(list<string>::iterator i = states.begin();i!=states.end();i++) // write all states in the context of the automaton
 		{
 			state = *i;
 			cnt = count(state,',');
@@ -333,7 +332,7 @@ class FindStates : public ASTConsumer
 		}
 		filestr<<name_of_start<<" [peripheries=2] ;\n";
 		subs = 0;
-		while(!states.empty())
+		while(!states.empty()) // substates ?
 		{
 			state = states.front();
 			filestr<<"subgraph cluster"<<subs<<" {\n";			
@@ -377,7 +376,7 @@ class FindStates : public ASTConsumer
 			filestr<<"}\n";
 			subs+=1;	
 		}		
-		for(list<string>::iterator i = transitions.begin();i!=transitions.end();i++)
+		for(list<string>::iterator i = transitions.begin();i!=transitions.end();i++) // write all transitions
 		{
 			state = *i;
 			pos1 = state.find(",");
@@ -411,7 +410,7 @@ int main(int argc, char *argv[])
 
 	HeaderSearchOptions hsopts;
 	hsopts.ResourceDir=LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
-	for(int i = 0; i<includeFiles.size();i++)
+	for(unsigned i = 0; i<includeFiles.size();i++)
 	{
 		hsopts.AddPath(includeFiles[i],
 				clang::frontend::Angled,
@@ -423,10 +422,10 @@ int main(int argc, char *argv[])
 	to.Triple = llvm::sys::getHostTriple();
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, to);
 	clang::ApplyHeaderSearchOptions(
-	*headers,
-	hsopts,
-	lang,
-	ti->getTriple());
+		*headers,
+		hsopts,
+		lang,
+		ti->getTriple());
 	Preprocessor pp(diag, lang, *ti, sm, *headers);
 	FrontendOptions f;
 	PreprocessorOptions ppio;
