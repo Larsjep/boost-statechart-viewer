@@ -79,6 +79,8 @@ class FindStates : public ASTConsumer
 
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
 	{
+		const SourceManager &sman = fSloc->getManager();
+		Diagnostic &diag = sman.getDiagnostics();
 		SourceLocation loc;
 		std::string line;
 		std::string super_class, output;
@@ -125,11 +127,18 @@ class FindStates : public ASTConsumer
 					recursive_visit(declCont);
 				
 				}
+				if(diag.hasErrorOccurred()) 
+				{
+					std::cout<<"Error during diagnostic.\n";
+					exit(1);
+				}
 			}
 		}
 	}
 	void recursive_visit(const DeclContext *declCont) //recursively visit all decls hidden inside namespaces
 	{
+		const SourceManager &sman = fSloc->getManager();
+		Diagnostic &diag = sman.getDiagnostics();
 		std::string line, output;
 		SourceLocation loc;
 		llvm::raw_string_ostream x(output);
@@ -174,6 +183,11 @@ class FindStates : public ASTConsumer
 					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
 					//declCont->dumpDeclContext();				
 					recursive_visit(declCont);
+				}
+				if(diag.hasErrorOccurred()) 
+				{
+					std::cout<<"Error during diagnostic.\n";
+					exit(1);
 				}
 			}
 		} 
@@ -268,12 +282,6 @@ class FindStates : public ASTConsumer
 					output = x.str();
 					line = clean_spaces(cut_typedef(output));
 					num = count(output,'<');
-					if(line.compare(0,12,"intreactions")==0) 
-					{
-						std::cout<<"Error during finding transitions. At least one of the transitions in this state("<<name_of_state<<") is not valid.\n";
-						dump_error(decl);
-						exit(1);					
-					}			
 					if(num>1)
 					{
 						num-=1;
@@ -304,19 +312,7 @@ class FindStates : public ASTConsumer
 			}
 		}	
 	}
-	void dump_error (const Decl *decl)
-	{
-		std::string output;
-		int pos1, pos2;		
-		const SourceManager &sman = fSloc->getManager();
-		const SourceLocation loc = decl->getLocation();
-		llvm::raw_string_ostream x(output);		
-		loc.print(x,sman);
-		output = x.str();
-		pos1 = output.find(":");
-		pos2 = output.rfind(":");
-		std::cout<<"In file: "<<output.substr(0,pos1)<<" at line: "<<output.substr(pos1+1, pos2-pos1-1) <<"\n";
-	}
+	
 	void save_to_file(std::string output)
 	{
 		std::string state, str, context, ctx;
@@ -418,9 +414,10 @@ int main(int argc, char *argv[])
 	llvm::cl::ParseCommandLineOptions(argc, argv);	
 	std::cout<<"Input file: "<<inputFilename<<"\n";	
 	DiagnosticOptions diagnosticOptions;
- 	TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::nulls(), diagnosticOptions);
+ 	TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::outs(), diagnosticOptions);
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());
 	Diagnostic diag(dis,tdp);
+	diag.setIgnoreAllWarnings(true);
  	FileSystemOptions fileSysOpt;     
 	LangOptions lang;
 	lang.BCPLComment=1;
@@ -450,6 +447,8 @@ int main(int argc, char *argv[])
 		lang,
 		ti->getTriple());
 	Preprocessor pp(diag, lang, *ti, sm, *headers);
+	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(),
+                                           pp.getLangOptions());
 	FrontendOptions f;
 	PreprocessorOptions ppio;
 	InitializePreprocessor(pp, ppio,hsopts,f);
