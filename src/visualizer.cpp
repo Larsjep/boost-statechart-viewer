@@ -65,12 +65,16 @@ class FindStates : public ASTConsumer
 	std::list<string> states;
 	std::string name_of_machine;
 	std::string name_of_start;
+	FullSourceLoc *fSloc;
 	public:
 
 	virtual void Initialize(ASTContext &ctx)//run after the AST is constructed
 	{	
+		SourceLocation loc;
 		name_of_start = "";
 		name_of_machine = "";
+		SourceManager &sman = ctx.getSourceManager();
+		fSloc = new FullSourceLoc(loc, sman);
 	}
 
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
@@ -156,7 +160,7 @@ class FindStates : public ASTConsumer
 							{
 								if(find_states(cRecDecl, line))
 								{				
-									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
+									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);		
 									//states.push_back(namedDecl->getNameAsString());
 									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
 									find_transitions(namedDecl->getNameAsString(), declCont);
@@ -258,13 +262,18 @@ class FindStates : public ASTConsumer
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
 		{
 			const Decl *decl = *i;
-			
 			if (const TypedefDecl *typedDecl = dyn_cast<TypedefDecl>(decl)) 
 			{
 					decl->print(x);
 					output = x.str();
 					line = clean_spaces(cut_typedef(output));
-					num = count(output,'<');					
+					num = count(output,'<');
+					if(line.compare(0,12,"intreactions")==0) 
+					{
+						std::cout<<"Error during finding transitions. At least one of the transitions in this state("<<name_of_state<<") is not valid.\n";
+						dump_error(decl);
+						exit(1);					
+					}			
 					if(num>1)
 					{
 						num-=1;
@@ -291,8 +300,22 @@ class FindStates : public ASTConsumer
 							line = get_next_base(line);
 						}
 					}
+					output = "";
 			}
 		}	
+	}
+	void dump_error (const Decl *decl)
+	{
+		std::string output;
+		int pos1, pos2;		
+		const SourceManager &sman = fSloc->getManager();
+		const SourceLocation loc = decl->getLocation();
+		llvm::raw_string_ostream x(output);		
+		loc.print(x,sman);
+		output = x.str();
+		pos1 = output.find(":");
+		pos2 = output.rfind(":");
+		std::cout<<"In file: "<<output.substr(0,pos1)<<" at line: "<<output.substr(pos1+1, pos2-pos1-1) <<"\n";
 	}
 	void save_to_file(std::string output)
 	{
@@ -440,7 +463,6 @@ int main(int argc, char *argv[])
 	tdp->BeginSourceFile(lang, &pp);
 	ParseAST(pp, &c, ctx, false, false);
 	tdp->EndSourceFile();
-	
 	c.save_to_file(outputFile);
 	return 0;
 
