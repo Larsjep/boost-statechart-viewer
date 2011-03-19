@@ -61,7 +61,6 @@ using namespace clang;
 class FindStates : public ASTConsumer
 {
 	std::list<string> transitions;
-	std::list<string> events;
 	std::list<string> states;
 	std::string name_of_machine;
 	std::string name_of_start;
@@ -413,6 +412,13 @@ int main(int argc, char *argv[])
 {
 	llvm::cl::ParseCommandLineOptions(argc, argv);	
 	std::cout<<"Input file: "<<inputFilename<<"\n";	
+	FILE* fileI = fopen(inputFilename.c_str(), "r");
+	if (!fileI)  
+	{
+		std::cout<<"Input file doesn't exist.\n";
+    	exit(1);
+	}
+	fclose(fileI);
 	DiagnosticOptions diagnosticOptions;
  	TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::outs(), diagnosticOptions);
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());
