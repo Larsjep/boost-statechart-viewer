@@ -109,6 +109,10 @@ bool is_state(const std::string line)
 		}
 		else
 		{
+			if(line.compare(0,24,"boost::statechart::state")==0)
+			{
+				return true;	
+			}
 			return false;
 		}
 	}
@@ -120,6 +124,10 @@ bool is_state(const std::string line)
 		}
 		else
 		{
+			if(line.compare(0,17,"statechart::state")==0)
+			{
+				return true;	
+			}
 			return false;
 		}
 	}
