@@ -1,0 +1,5 @@
+The program can visualize simple state machines. It is able to visualize states and transitions. Now it doesn't support orthogonal states. The state machine can be inside namespaces, but not in templates. This program works correctly with basic topic (StopWatch) in your examples. 
+
+The input for the program is the file with the state machine, using the command line you need to specify all source locations for finding header files, except of system source locations. For doing this you can use typical compiler options and flags (like -I for include files). The command line works the same as in the compilers. The output format is dot and the output file can be transformed into the picture using classic dot commands. 
+
+For compiling the program you need to have LLVM and Clang installed. The program should work with packages distributed with operating system or you can download LLVM and Clang from repositories and compile it.
