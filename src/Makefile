@@ -3,7 +3,7 @@
 # Use our version of clang (even without installing)
 LLVM_BIN= $(CURDIR)/../_install/bin
 
-LLVM_CONFIG := $(shell $(LLVM_BIN)/llvm-config --cxxflags --ldflags --libs jit core)
+LLVM_CONFIG := $(shell llvm-config --cxxflags --ldflags --libs jit core)
 
 visualizer: visualizer.cpp commandlineopt.h stringoper.h
 	g++ $< -o $@ -g -lclangParse -lclangFrontend -lclangSerialization \
