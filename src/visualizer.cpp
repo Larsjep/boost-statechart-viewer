@@ -58,6 +58,17 @@
 using namespace clang;
 
 
+class MyDiagnosticClient : public TextDiagnosticPrinter
+{
+	public:
+	MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false){}
+	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
+	{
+		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
+		if(DiagLevel == 3) exit(1);
+	}
+};
+
 class FindStates : public ASTConsumer
 {
 	std::list<string> transitions;
@@ -79,7 +90,6 @@ class FindStates : public ASTConsumer
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
 	{
 		const SourceManager &sman = fSloc->getManager();
-		Diagnostic &diag = sman.getDiagnostics();
 		SourceLocation loc;
 		std::string line;
 		std::string super_class, output;
@@ -126,18 +136,12 @@ class FindStates : public ASTConsumer
 					recursive_visit(declCont);
 				
 				}
-				if(diag.hasErrorOccurred()) 
-				{
-					std::cout<<"Error during diagnostic.\n";
-					exit(1);
-				}
 			}
 		}
 	}
 	void recursive_visit(const DeclContext *declCont) //recursively visit all decls hidden inside namespaces
 	{
 		const SourceManager &sman = fSloc->getManager();
-		Diagnostic &diag = sman.getDiagnostics();
 		std::string line, output;
 		SourceLocation loc;
 		llvm::raw_string_ostream x(output);
@@ -182,11 +186,6 @@ class FindStates : public ASTConsumer
 					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
 					//declCont->dumpDeclContext();				
 					recursive_visit(declCont);
-				}
-				if(diag.hasErrorOccurred()) 
-				{
-					std::cout<<"Error during diagnostic.\n";
-					exit(1);
 				}
 			}
 		} 
@@ -415,14 +414,14 @@ int main(int argc, char *argv[])
 	FILE* fileI = fopen(inputFilename.c_str(), "r");
 	if (!fileI)  
 	{
-		std::cout<<"Input file doesn't exist.\n";
+		perror(inputFilename.c_str());
     	exit(1);
 	}
 	fclose(fileI);
 	DiagnosticOptions diagnosticOptions;
- 	TextDiagnosticPrinter *tdp = new TextDiagnosticPrinter(llvm::outs(), diagnosticOptions);
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());
-	Diagnostic diag(dis,tdp);
+	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::outs(), diagnosticOptions);
+	Diagnostic diag(dis,mdc);
 	diag.setIgnoreAllWarnings(true);
  	FileSystemOptions fileSysOpt;     
 	LangOptions lang;
@@ -465,9 +464,9 @@ int main(int argc, char *argv[])
 	Builtin::Context builtins(*ti);
 	FindStates c;
 	ASTContext ctx(lang, sm, *ti, tab, sel, builtins,0);
-	tdp->BeginSourceFile(lang, &pp);
+	mdc->BeginSourceFile(lang, &pp);
 	ParseAST(pp, &c, ctx, false, false);
-	tdp->EndSourceFile();
+	mdc->EndSourceFile();
 	c.save_to_file(outputFile);
 	return 0;
 
