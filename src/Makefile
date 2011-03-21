@@ -1,12 +1,7 @@
--include ../config.local
-
-# Use our version of clang (even without installing)
-LLVM_BIN= $(CURDIR)/../_install/bin
-
 LLVM_CONFIG := $(shell llvm-config --cxxflags --ldflags --libs jit core)
 
 visualizer: visualizer.cpp commandlineopt.h stringoper.h
-	g++ $< -o $@ -g -lclangParse -lclangFrontend -lclangSerialization \
+	$(CXX) $< -o $@ -g -lclangParse -lclangFrontend -lclangSerialization \
 	-lclangDriver -lclangCodeGen -lclangSema -lclangChecker \
 	-lclangAnalysis -lclangRewrite -lclangAST -lclangLex -lclangBasic \
 	$(LLVM_CONFIG)
