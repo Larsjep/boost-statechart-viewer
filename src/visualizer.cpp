@@ -12,7 +12,6 @@
 #include "clang/Frontend/TextDiagnosticPrinter.h"
 
 #include "clang/Basic/LangOptions.h"
-#include "clang/Basic/FileSystemOptions.h"
 
 #include "clang/Index/TranslationUnit.h"
 #include "clang/Basic/SourceManager.h"
@@ -419,17 +418,14 @@ int main(int argc, char *argv[])
 	}
 	fclose(fileI);
 	DiagnosticOptions diagnosticOptions;
-	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());
 	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::outs(), diagnosticOptions);
-	Diagnostic diag(dis,mdc);
+	Diagnostic diag(mdc);
 	diag.setIgnoreAllWarnings(true);
- 	FileSystemOptions fileSysOpt;     
 	LangOptions lang;
 	lang.BCPLComment=1;
 	lang.CPlusPlus=1; 
-	FileManager fm (fileSysOpt);
-
-	SourceManager sm ( diag, fm);
+	SourceManager sm (diag);
+	FileManager fm;
 	HeaderSearch *headers = new HeaderSearch(fm);
 	CompilerInvocation::setLangDefaults(lang, IK_ObjCXX);
 
