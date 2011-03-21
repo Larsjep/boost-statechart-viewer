@@ -414,7 +414,7 @@ int main(int argc, char *argv[])
 	if (!fileI)  
 	{
 		perror(inputFilename.c_str());
-    	exit(1);
+		exit(1);
 	}
 	fclose(fileI);
 	DiagnosticOptions diagnosticOptions;
