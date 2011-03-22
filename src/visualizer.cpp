@@ -48,6 +48,12 @@
 #include "clang/Parse/ParseAST.h"
 #include "clang/Basic/Version.h"
 
+#include "clang/Driver/Driver.h"
+
+#include "clang/Driver/Job.h"
+#include "clang/Driver/Tool.h"
+#include "clang/Driver/Compilation.h"
+
 #include "llvm/Support/CommandLine.h"
 
 //my own header files
@@ -55,7 +61,7 @@
 #include "commandlineopt.h"
 
 using namespace clang;
-
+using namespace clang::driver;
 
 class MyDiagnosticClient : public TextDiagnosticPrinter
 {
@@ -65,6 +71,7 @@ class MyDiagnosticClient : public TextDiagnosticPrinter
 	{
 		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
 		if(DiagLevel == 3) exit(1);
+		
 	}
 };
 
@@ -406,10 +413,10 @@ class FindStates : public ASTConsumer
 	}
 };
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
 	llvm::cl::ParseCommandLineOptions(argc, argv);	
-	std::cout<<"Input file: "<<inputFilename<<"\n";	
+	//std::cout<<"Input file: "<<inputFilename<<"\n";	
 	FILE* fileI = fopen(inputFilename.c_str(), "r");
 	if (!fileI)  
 	{
@@ -418,38 +425,51 @@ int main(int argc, char *argv[])
 	}
 	fclose(fileI);
 	DiagnosticOptions diagnosticOptions;
-	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::outs(), diagnosticOptions);
+	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::errs(), diagnosticOptions);
 	Diagnostic diag(mdc);
 	diag.setIgnoreAllWarnings(true);
-	LangOptions lang;
-	lang.BCPLComment=1;
-	lang.CPlusPlus=1; 
 	SourceManager sm (diag);
 	FileManager fm;
 	HeaderSearch *headers = new HeaderSearch(fm);
-	CompilerInvocation::setLangDefaults(lang, IK_ObjCXX);
+	Driver TheDriver(LLVM_PREFIX "/bin/", llvm::sys::getHostTriple(),
+                   "", /*IsProduction=*/false, /*CXXIsProduction=*/false,
+                   diag);
+	CompilerInvocation compInv;
+	llvm::SmallVector<const char *, 256> Args(argv, argv + argc);
+	Args.push_back("-xc++");
+	llvm::OwningPtr<Compilation> C(TheDriver.BuildCompilation(Args.size(),
+                                                            Args.data()));
+	const driver::JobList &Jobs = C->getJobs();
+	const driver::Command *Cmd = cast<driver::Command>(*Jobs.begin());
+	const driver::ArgStringList &CCArgs = Cmd->getArguments();
+	
+	CompilerInvocation::CreateFromArgs(compInv,
+	                                  const_cast<const char **>(CCArgs.data()),
+	                                  const_cast<const char **>(CCArgs.data())+CCArgs.size(),
+	                                  diag);	
 
 	HeaderSearchOptions hsopts;
-	hsopts.ResourceDir=LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
-	for(unsigned i = 0; i<includeFiles.size();i++)
-	{
-		hsopts.AddPath(includeFiles[i],
-				clang::frontend::Angled,
-				false,
-				false,
-				true);
-	}
-	TargetOptions to;
-	to.Triple = llvm::sys::getHostTriple();
+	
+	hsopts.ResourceDir = LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
+	TargetOptions to = compInv.getTargetOpts();
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, to);
-	clang::ApplyHeaderSearchOptions(
-		*headers,
-		hsopts,
-		lang,
-		ti->getTriple());
+	LangOptions lang = compInv.getLangOpts();
+	/*lang.BCPLComment=1;
+	lang.CPlusPlus=1;
+	lang.Digraphs=1;
+	lang.GNUMode=1;
+	lang.ObjC1=lang.ObjC2 = 1;
+	lang.GNUInline = 1;
+	lang.Bool=1;
+	lang.GNUKeywords = lang.GNUMode;
+   lang.CXXOperatorNames = lang.CPlusPlus;
+	lang.DollarIdents = 1;*/
+
+
+	clang::ApplyHeaderSearchOptions(*headers, hsopts, lang, ti->getTriple());
 	Preprocessor pp(diag, lang, *ti, sm, *headers);
-	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(),
-                                           pp.getLangOptions());
+	Builtin::Context builtins(*ti);
+	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(),pp.getLangOptions().NoBuiltin);
 	FrontendOptions f;
 	PreprocessorOptions ppio;
 	InitializePreprocessor(pp, ppio,hsopts,f);
@@ -457,7 +477,6 @@ int main(int argc, char *argv[])
 	sm.createMainFileID(file);
 	IdentifierTable tab(lang);
 	SelectorTable sel;
-	Builtin::Context builtins(*ti);
 	FindStates c;
 	ASTContext ctx(lang, sm, *ti, tab, sel, builtins,0);
 	mdc->BeginSourceFile(lang, &pp);
