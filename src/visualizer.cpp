@@ -54,8 +54,8 @@
 #include "clang/Driver/Tool.h"
 #include "clang/Driver/Compilation.h"
 
+#include "clang/Frontend/FrontendDiagnostic.h"
 #include "llvm/Support/CommandLine.h"
-
 //my own header files
 #include "stringoper.h"
 #include "commandlineopt.h"
@@ -69,9 +69,13 @@ class MyDiagnosticClient : public TextDiagnosticPrinter
 	MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false){}
 	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
 	{
-		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
-		if(DiagLevel == 3) exit(1);
-		
+		FullSourceLoc loc = Info.getLocation();
+		const SourceManager &sman = loc.getManager();
+		if(!sman.isInSystemHeader(loc))
+		{		
+			TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
+			exit(1);
+		}	
 	}
 };
 
@@ -416,7 +420,7 @@ class FindStates : public ASTConsumer
 int main(int argc, char **argv)
 {
 	llvm::cl::ParseCommandLineOptions(argc, argv);	
-	//std::cout<<"Input file: "<<inputFilename<<"\n";	
+	std::cout<<"Input file: "<<inputFilename<<"\n";	
 	FILE* fileI = fopen(inputFilename.c_str(), "r");
 	if (!fileI)  
 	{
@@ -431,27 +435,28 @@ int main(int argc, char **argv)
 	SourceManager sm (diag);
 	FileManager fm;
 	HeaderSearch *headers = new HeaderSearch(fm);
+	
 	Driver TheDriver(LLVM_PREFIX "/bin/", llvm::sys::getHostTriple(),
-                   "", /*IsProduction=*/false, /*CXXIsProduction=*/false,
-                   diag);
+                   "a.out", false, false, diag);
+	TheDriver.setCheckInputsExist(true);
 	CompilerInvocation compInv;
 	llvm::SmallVector<const char *, 256> Args(argv, argv + argc);
 	Args.push_back("-xc++");
 	llvm::OwningPtr<Compilation> C(TheDriver.BuildCompilation(Args.size(),
                                                             Args.data()));
+
 	const driver::JobList &Jobs = C->getJobs();
 	const driver::Command *Cmd = cast<driver::Command>(*Jobs.begin());
 	const driver::ArgStringList &CCArgs = Cmd->getArguments();
-	
 	CompilerInvocation::CreateFromArgs(compInv,
 	                                  const_cast<const char **>(CCArgs.data()),
 	                                  const_cast<const char **>(CCArgs.data())+CCArgs.size(),
-	                                  diag);	
+	                                  diag);
 
-	HeaderSearchOptions hsopts;
-	
+	HeaderSearchOptions hsopts = compInv.getHeaderSearchOpts();
 	hsopts.ResourceDir = LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
-	TargetOptions to = compInv.getTargetOpts();
+	TargetOptions to;
+	to.Triple = llvm::sys::getHostTriple();
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, to);
 	LangOptions lang = compInv.getLangOpts();
 	/*lang.BCPLComment=1;
@@ -461,15 +466,15 @@ int main(int argc, char **argv)
 	lang.ObjC1=lang.ObjC2 = 1;
 	lang.GNUInline = 1;
 	lang.Bool=1;
-	lang.GNUKeywords = lang.GNUMode;
-   lang.CXXOperatorNames = lang.CPlusPlus;
+	lang.GNUKeywords = 1;
+   lang.CXXOperatorNames = 1;
 	lang.DollarIdents = 1;*/
 
-
+	
 	clang::ApplyHeaderSearchOptions(*headers, hsopts, lang, ti->getTriple());
 	Preprocessor pp(diag, lang, *ti, sm, *headers);
 	Builtin::Context builtins(*ti);
-	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(),pp.getLangOptions().NoBuiltin);
+	//pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(), pp.getLangOptions().NoBuiltin);
 	FrontendOptions f;
 	PreprocessorOptions ppio;
 	InitializePreprocessor(pp, ppio,hsopts,f);
