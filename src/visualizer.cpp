@@ -40,10 +40,10 @@ class MyDiagnosticClient : public TextDiagnosticPrinter
 	{
 		FullSourceLoc loc = Info.getLocation();
 		const SourceManager &sman = loc.getManager();
-		if(!sman.isInSystemHeader(loc))
+		if(DiagLevel == 3)
 		{		
-			TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
-			exit(1);
+			//TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
+			//exit(1);
 		}	
 	}
 };
@@ -79,8 +79,8 @@ class FindStates : public ASTConsumer
 			loc = decl->getLocation();
 			if(loc.isValid())
 			{
-				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
 				//std::cout<<decl->getDeclKindName()<<"\n";
+				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
 				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
 					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
@@ -405,12 +405,14 @@ int main(int argc, char **argv)
 	FileManager fm;
 	HeaderSearch *headers = new HeaderSearch(fm);
 	
-	Driver TheDriver(LLVM_PREFIX "/bin/", llvm::sys::getHostTriple(),
-                   "a.out", false, false, diag);
+	Driver TheDriver(LLVM_PREFIX "/bin/clang++", llvm::sys::getHostTriple(),
+                   "a.out", false, true, diag);
 	TheDriver.setCheckInputsExist(true);
+	TheDriver.CCCIsCXX = 1;	
 	CompilerInvocation compInv;
-	llvm::SmallVector<const char *, 256> Args(argv, argv + argc);
-	Args.push_back("-xc++");
+	llvm::SmallVector<const char *, 16> Args(argv, argv + argc);
+	Args.push_back("-C++");
+	Args.push_back("-std=gnu++98");
 	llvm::OwningPtr<Compilation> C(TheDriver.BuildCompilation(Args.size(),
                                                             Args.data()));
 
@@ -436,14 +438,18 @@ int main(int argc, char **argv)
 	lang.GNUInline = 1;
 	lang.Bool=1;
 	lang.GNUKeywords = 1;
-   lang.CXXOperatorNames = 1;
-	lang.DollarIdents = 1;*/
-
-	
+	lang.CXXOperatorNames = 1;
+	lang.DollarIdents = 1;
+	lang.HexFloats = 1;
+	lang.C99 = 1;
+	lang.ImplicitInt = 1;
+	lang.AsmPreprocessor = 1;
+*/
 	clang::ApplyHeaderSearchOptions(*headers, hsopts, lang, ti->getTriple());
 	Preprocessor pp(diag, lang, *ti, sm, *headers);
 	Builtin::Context builtins(*ti);
-	//pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(), pp.getLangOptions().NoBuiltin);
+	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(), pp.getLangOptions().NoBuiltin);
+	//builtins.InitializeBuiltins(pp.getIdentifierTable(), false);
 	FrontendOptions f;
 	PreprocessorOptions ppio;
 	InitializePreprocessor(pp, ppio,hsopts,f);
@@ -454,7 +460,7 @@ int main(int argc, char **argv)
 	FindStates c;
 	ASTContext ctx(lang, sm, *ti, tab, sel, builtins,0);
 	mdc->BeginSourceFile(lang, &pp);
-	ParseAST(pp, &c, ctx, false, false);
+	ParseAST(pp, &c, ctx);
 	mdc->EndSourceFile();
 	c.save_to_file(outputFile);
 	return 0;
