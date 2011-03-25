@@ -3,13 +3,22 @@
 cd $(dirname $0)
 TOP=$PWD
 
-ln -sf ../../clang llvm/tools/clang
-mkdir -p llvm/_build
-cd llvm/_build
-../configure --prefix=$TOP/_install
+if [ -x llvm/configure ]; then
+    echo "Will build llvm and clang from sources" 
+    ln -sf ../../clang llvm/tools/clang
+    mkdir -p llvm/_build
+    (
+	cd llvm/_build
+	../configure --prefix=$TOP/_install --disable-optimized --enable-debug-runtime --enable-debug-symbols
+    )
+    LLVM_CONFIG=$TOP/_install/bin/llvm-config
+else
+    echo "Using system-wide llvm and clang"
+    LLVM_CONFIG=llvm-config
+fi
 
-cat <<EOF
-To compile LLVM run the following comands:
-cd $PWD
-make install
+cat <<EOF > $TOP/Makefile.config
+LLVM_CONFIG := $LLVM_CONFIG
 EOF
+
+echo "Now run make to compile everything"
