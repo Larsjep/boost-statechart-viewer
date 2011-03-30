@@ -8,7 +8,6 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Config/config.h"
-#include "llvm/Support/CommandLine.h"
 
 //clang header files
 #include "clang/Frontend/TextDiagnosticPrinter.h"
@@ -38,11 +37,9 @@ class MyDiagnosticClient : public TextDiagnosticPrinter
 	MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false){}
 	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
 	{
-		//FullSourceLoc loc = Info.getLocation();
-		//const SourceManager &sman = loc.getManager();
-		if(DiagLevel == 3)
+		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
+		if(DiagLevel > 2) // if error/fatal error stop the program
 		{		
-			TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
 			exit(1);
 		}	
 	}
@@ -53,25 +50,19 @@ class FindStates : public ASTConsumer
 	list<string> transitions;
 	string name_of_machine;
 	string name_of_start;
-	FullSourceLoc *fSloc;
 	public:
 	list<string> states;
 	
 	virtual void Initialize(ASTContext &ctx)//run after the AST is constructed
 	{	
-		SourceLocation loc;
 		name_of_start = "";
 		name_of_machine = "";
-		SourceManager &sman = ctx.getSourceManager();
-		fSloc = new FullSourceLoc(loc, sman);
 	}
 
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
 	{
-		const SourceManager &sman = fSloc->getManager();
 		SourceLocation loc;
-		std::string line;
-		std::string super_class, output;
+      std::string line, output;
 		llvm::raw_string_ostream x(output);
 		for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
 		{
@@ -82,14 +73,13 @@ class FindStates : public ASTConsumer
 				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);	
 				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
-					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
+					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a struct or class	
 					{
-									
 						//std::cout<<namedDecl->getNameAsString()<<"\n";
+						//cout<<decl->getKind()<<"ss\n";
 						const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
 						decl->print(x);
 						line = cut_commentary(clean_spaces(get_line_of_code(x.str())));
-						output = "";
 						if(is_derived(line))
 						{
 							if(name_of_machine == "")
@@ -100,18 +90,19 @@ class FindStates : public ASTConsumer
 							{
 								if(find_states(cRecDecl, line))
 								{				
-									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);					
+									const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);
 									std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
 									find_transitions(namedDecl->getNameAsString(), declCont);
 								}
 							}
 						}
+						output = "";
 					}
 				}	
 				if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
 				{
 					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
-					//declCont->dumpDeclContext();				
+					//declCont->dumpDeclContext();
 					recursive_visit(declCont);
 				
 				}
@@ -120,19 +111,17 @@ class FindStates : public ASTConsumer
 	}
 	void recursive_visit(const DeclContext *declCont) //recursively visit all decls hidden inside namespaces
 	{
-		const SourceManager &sman = fSloc->getManager();
 		std::string line, output;
 		SourceLocation loc;
 		llvm::raw_string_ostream x(output);
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i)
 		{
 			const Decl *decl = *i;
-			const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
-			
 			//std::cout<<"a "<<decl->getDeclKindName()<<"\n";
 			loc = decl->getLocation();
 			if(loc.isValid())
-			{			
+			{	
+				const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);		
 				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
 					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
@@ -253,39 +242,39 @@ class FindStates : public ASTConsumer
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
 		{
 			const Decl *decl = *i;
-			if (const TypedefDecl *typedDecl = dyn_cast<TypedefDecl>(decl)) 
+			if (decl->getKind()==26) 
 			{
-					decl->print(x);
-					output = x.str();
-					line = clean_spaces(cut_typedef(output));
-					num = count(output,'<')/2+1;
-					if(num>1)
+				decl->print(x);
+				output = x.str();
+				line = clean_spaces(cut_typedef(output));
+				num = count(output,'<')/2+1;
+				if(num>1)
+				{
+					if(is_list(line))
 					{
-						if(is_list(line))
-						{
-							line = get_inner_part(line);
-						}
+						line = get_inner_part(line);
 					}
-					for(int j = 0;j<num;j++)
+				}
+				for(int j = 0;j<num;j++)
+				{
+					if(j!=num-1) base = get_first_base(line);			
+					else base = line;
+					if(is_transition(base))
 					{
-						if(j!=num-1) base = get_first_base(line);			
-						else base = line;
-						if(is_transition(base))
-						{
-							dest = name_of_state;
-							params = get_params(base);
-							//cout<<params<<"\n";
-							dest.append(",");							
-							dest.append(params);
-							transitions.push_back(dest);
-							line = get_next_base(line);
-						}
-						else
-						{
-							line = get_next_base(line);
-						}
+						dest = name_of_state;
+						params = get_params(base);
+						//cout<<params<<"\n";
+						dest.append(",");							
+						dest.append(params);
+						transitions.push_back(dest);
+						line = get_next_base(line);
 					}
-					output = "";
+					else
+					{
+						line = get_next_base(line);
+					}
+				}
+				output = "";
 			}
 		}	
 	}
@@ -388,37 +377,36 @@ class FindStates : public ASTConsumer
 
 
 int main(int argc, char **argv)
-{
- 
+{ 
 	string inputFilename = "";
-	string outputFilename = "graph.dot";
-	DiagnosticOptions diagnosticOptions;
-	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::errs(), diagnosticOptions);
+	string outputFilename = "graph.dot"; // initialize output Filename
+	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::errs(), * new DiagnosticOptions());
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());	
 	Diagnostic diag(dis,mdc);
-	FileSystemOptions fsopts;
-	FileManager fm(fsopts);
+	FileManager fm( * new FileSystemOptions());
 	SourceManager sm (diag, fm);
 	HeaderSearch *headers = new HeaderSearch(fm);
 	
-	Driver TheDriver(LLVM_PREFIX "/bin", llvm::sys::getHostTriple(),
-                   "graph.dot", false, false, diag);
+	Driver TheDriver(LLVM_PREFIX "/bin", llvm::sys::getHostTriple(), "", false, false, diag);
 	TheDriver.setCheckInputsExist(true);
 	TheDriver.CCCIsCXX = 1;	
 	CompilerInvocation compInv;
 	llvm::SmallVector<const char *, 16> Args(argv, argv + argc);
-		
 	llvm::OwningPtr<Compilation> C(TheDriver.BuildCompilation(Args.size(),
                                                             Args.data()));
-
 	const driver::JobList &Jobs = C->getJobs();
 	const driver::Command *Cmd = cast<driver::Command>(*Jobs.begin());
 	const driver::ArgStringList &CCArgs = Cmd->getArguments();
-	for(int i = 0; i<Args.size();i++)
+	for(unsigned i = 0; i<Args.size();i++) // find -o in ArgStringList
 	{	
 		if(strncmp(Args[i],"-o",2)==0) 
 		{
-			outputFilename = Args[i+1];
+			if(strlen(Args[i])>2)
+			{
+				string str = Args[i];
+				outputFilename = str.substr(2);
+			}
+			else outputFilename = Args[i+1];
 			break;
 		}
 	}
@@ -430,11 +418,16 @@ int main(int argc, char **argv)
 
 	HeaderSearchOptions hsopts = compInv.getHeaderSearchOpts();
 	hsopts.ResourceDir = LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
+	LangOptions lang = compInv.getLangOpts();
+	CompilerInvocation::setLangDefaults(lang, IK_ObjCXX);
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, compInv.getTargetOpts());
+	ApplyHeaderSearchOptions(*headers, hsopts, lang, ti->getTriple());
 	FrontendOptions f = compInv.getFrontendOpts();
 	inputFilename = f.Inputs[0].second;
-	LangOptions lang;
-	CompilerInvocation::setLangDefaults(lang, IK_ObjCXX);
+
+	cout<<"Input filename: "<<inputFilename<<"\n"; // print Input filename
+	cout<<"Output filename: "<<outputFilename<<"\n"; // print Output filename
+
 
 	Preprocessor pp(diag, lang, *ti, sm, *headers);
 	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(), lang);
@@ -445,12 +438,11 @@ int main(int argc, char **argv)
 	sm.createMainFileID(file);
 	IdentifierTable tab(lang);
 	Builtin::Context builtins(*ti);
-	SelectorTable sel;
 	FindStates c;
-	ASTContext ctx(lang, sm, *ti, tab, sel, builtins,0);
-	mdc->BeginSourceFile(lang, &pp);
+	ASTContext ctx(lang, sm, *ti, tab, * new SelectorTable(), builtins,0);
+	mdc->BeginSourceFile(lang, &pp);//start using diagnostic
 	ParseAST(pp, &c, ctx, false, true);
-	mdc->EndSourceFile();
+	mdc->EndSourceFile(); //end using diagnostic
 	if(c.states.size()>0) c.save_to_file(outputFilename);
 	else cout<<"No state machine was found\n";
 	return 0;
