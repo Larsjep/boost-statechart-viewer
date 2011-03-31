@@ -228,8 +228,8 @@ class FindStates : public ASTConsumer
 				pos = params.find(",");
 				name_of_machine = cut_namespaces(params.substr(0,pos));
 				name_of_start = cut_namespaces(params.substr(pos+1));
-				std::cout<<"Name of the state machine:"<<name_of_machine<<"\n";
-				std::cout<<"Name of the first state:"<<name_of_start<<"\n";
+				std::cout<<"Name of the state machine: "<<name_of_machine<<"\n";
+				std::cout<<"Name of the first state: "<<name_of_start<<"\n";
 			}
 		}
 	}
@@ -247,9 +247,10 @@ class FindStates : public ASTConsumer
 				decl->print(x);
 				output = x.str();
 				line = clean_spaces(cut_typedef(output));
-				num = count(output,'<')/2+1;
+				num = count(output,'<');
 				if(num>1)
 				{
+					num-=1;
 					if(is_list(line))
 					{
 						line = get_inner_part(line);
