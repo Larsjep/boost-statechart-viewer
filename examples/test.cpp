@@ -28,7 +28,7 @@ DU Zm; // pro posilani udalosti
 
 void* casovac(void* s)
 {
-    int es = int (s);
+    int es = (intptr_t)s;
     sleep (es);
     Zm.process_event (EvTimer());
     return NULL;

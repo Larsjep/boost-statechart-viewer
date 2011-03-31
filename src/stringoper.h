@@ -100,36 +100,17 @@ std::string clean_spaces(const std::string line)
 
 bool is_state(const std::string line)
 {
-	int pos = line.find("::");
-	if(pos == 5)
+	if(cut_namespaces(line).compare(0,12,"simple_state")==0)
 	{
-		if(line.compare(0,31,"boost::statechart::simple_state")==0)
-		{
-			return true;	
-		}
-		else
-		{
-			if(line.compare(0,24,"boost::statechart::state")==0)
-			{
-				return true;	
-			}
-			return false;
-		}
+		return true;	
 	}
 	else
 	{
-		if(line.compare(0,24,"statechart::simple_state")==0)
+		if(cut_namespaces(line).compare(0,5,"state")==0)
 		{
 			return true;	
 		}
-		else
-		{
-			if(line.compare(0,17,"statechart::state")==0)
-			{
-				return true;	
-			}
-			return false;
-		}
+		return false;
 	}
 }
 // Transitions
@@ -154,19 +135,14 @@ int count(const std::string line, const char c) //count all < in string
 
 bool is_list(const std::string line)
 {
-	int pos = line.find("::");
-	if(pos == 5)
+	//std::cout<<line<<"\n";
+	int pos = 0;
+	for(unsigned i = 0; i<line.length();i++)
 	{
-		if(line.compare(0,16,"boost::mpl::list")==0)
-		{
-			return true;	
-		}
-		else
-		{
-			return false;
-		}
-	}
-	if(line.compare(0,9,"mpl::list")==0)
+		if(line[i]=='<') break;
+		if(line[i]==':' && line[i+1]==':') pos = i+2;
+	}	
+	if(line.substr(pos).compare(0,4,"list")==0)
 	{
 		return true;	
 	}
@@ -200,28 +176,13 @@ std::string get_inner_part(const std::string line)
 
 bool is_transition(const std::string line)
 {
-	int pos = line.find("::");
-	if(pos == 5)
+	if(cut_namespaces(line).compare(0,10,"transition")==0)
 	{
-		if(line.compare(0,29,"boost::statechart::transition")==0)
-		{
-			return true;	
-		}
-		else
-		{
-			return false;
-		}
+		return true;	
 	}
 	else
-	{	
-		if(line.compare(0,22,"statechart::transition")==0)
-		{
-			return true;	
-		}
-		else
-		{
-			return false;
-		}
+	{
+		return false;
 	}
 }
 
@@ -237,27 +198,12 @@ std::string get_params(std::string line)
 
 bool is_machine(const std::string line)
 {
-	int pos = line.find("::");
-	if(pos == 5)
+	if(cut_namespaces(line).compare(0,13,"state_machine")==0)
 	{
-		if(line.compare(0,32,"boost::statechart::state_machine")==0)
-		{
-			return true;	
-		}
-		else
-		{
-			return false;
-		}
+		return true;	
 	}
 	else
-	{	
-		if(line.compare(0,25,"statechart::state_machine")==0)
-		{
-			return true;	
-		}
-		else
-		{
-			return false;
-		}
+	{
+		return false;
 	}
 }
