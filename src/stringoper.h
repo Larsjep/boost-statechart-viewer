@@ -1,209 +1,336 @@
 #include <string>
 
-std::string get_line_of_code(const std::string code) //return the line of code
+using namespace std;
+using namespace clang;
+class StringDecl
 {
-	std::string ret = code;	
-	unsigned i;	
-	//std::cout<<code<<"\n\n";
-	for(i = 0;i<ret.length();i++)
+	public:
+	StringDecl(){};
+
+	string clean_spaces(const string line) // remove backspaces
 	{
-		if(ret[i]=='\n'||ret[i]=='{') break;
-	}	
-	return ret.substr(0,i);
-} 
-
-std::string cut_commentary(const std::string line) //cut commentary at the end of line
-{
-	unsigned i = 0;
-	for(i = 0;i<line.length()-1;i++)
-	{
-		if(line[i]=='/' && line[i+1]=='/') return line.substr(0,i);
-		if(line[i]=='/' && line[i+1]=='*') return line.substr(0,i);
-	}
-	return line;
-
-}
-
-std::string cut_namespaces(std::string line) //cut namespaces from the name of the state
-{
-	int i = line.rfind("::");
-	if(i==-1) return line;
-	return line.substr(i+2);
-}
-
-bool is_derived(const std::string line) // return true if the struct or class is derived
-{
-	unsigned i;
-	for(i = 0;i<line.length()-1;i++)
-	{
-		if(line[i]==':')
+		unsigned i;
+		string new_line = "";
+		for(i = 0;i<line.length();i++)
 		{
-			if(line[i+1]!=':') return true;
-			else i+=1;
+			if(!isspace(line[i])) new_line+=line[i];
 		}
+		//cout<<new_line;
+		return new_line;
 	}
-	return false;
-}
-
-std::string get_super_class(const std::string line) // get the super class of this declarations
-{
-	unsigned i;
-	for(i = 0;i<line.length()-1;i++)
+	string cut_commentary(const string line) //cut commentary at the end of line
 	{
-		if(line[i]==':')
+		unsigned i = 0;
+		for(i = 0;i<line.length()-1;i++)
 		{
-			if(line[i+1]!=':') break;
-			else i+=1;
+			if(line[i]=='/' && line[i+1]=='/') return line.substr(0,i);
+			if(line[i]=='/' && line[i+1]=='*') return line.substr(0,i);
 		}
+		return line;
 	}
-	return line.substr(i+1);
-}
 
-std::string get_next_base(const std::string line) // get the super class of this declarations
-{
-	unsigned i;
-	int brackets = 0;
-	for(i = 0;i<line.length()-1;i++)
+	string get_line_of_code(const string code) //return the line of code
 	{
-		if(line[i]=='<') brackets+=1;
-		if(line[i]=='>') brackets-=1;
-		if(line[i]==',' && brackets == 0) break;
-	}
-	return line.substr(i+1);
-}  
-
-std::string get_first_base(const std::string line) // get the super class of this declarations
-{
-	unsigned i;
-	int brackets = 0;
-	for(i = 0;i<line.length()-1;i++)
-	{
-		if(line[i]=='<') brackets+=1;
-		if(line[i]=='>') brackets-=1;
-		if(line[i]==',' && brackets == 0) break;
-	}
-	return line.substr(0,i);
-}  
+		string ret;	
+		unsigned i;	
+		//cout<<code<<"\n\n";
+		for(i = 0;i<code.length();i++)
+		{
+			if(code[i]=='\n'||code[i]=='{') break;
+		}
+		ret = code.substr(0,i);
+		ret = clean_spaces(ret);
+		return cut_commentary(ret);
+	} 
 
 
-std::string clean_spaces(const std::string line)
-{
-	unsigned i;
-	std::string new_line = "";
-	for(i = 0;i<line.length();i++)
-	{
-		if(!isspace(line[i])) new_line+=line[i];
-	}
-	//std::cout<<new_line;
-	return new_line;
-}
 
-bool is_state(const std::string line)
-{
-	if(cut_namespaces(line).compare(0,12,"simple_state")==0)
+	string cut_namespaces(string line) //cut namespaces from the name of the state
 	{
-		return true;	
+		int i = line.rfind("::");
+		if(i==-1) return line;
+		return line.substr(i+2);
 	}
-	else
+
+	bool is_derived(const string line) // return true if the struct or class is derived
 	{
-		if(cut_namespaces(line).compare(0,5,"state")==0)
+		unsigned i;
+		for(i = 0;i<line.length()-1;i++)
+		{
+			if(line[i]==':')
+			{
+				if(line[i+1]!=':') return true;
+				else i+=1;
+			}
+		}
+		return false;
+	}
+
+	string get_super_class(const string line) // get the super class of this declarations
+	{
+		unsigned i;
+		for(i = 0;i<line.length()-1;i++)
+		{
+			if(line[i]==':')
+			{
+				if(line[i+1]!=':') break;
+				else i+=1;
+			}
+		}
+		return line.substr(i+1);
+	}
+
+	string get_next_base(const string line) // get the super class of this declarations
+	{
+		unsigned i;
+		int brackets = 0;
+		for(i = 0;i<line.length()-1;i++)
+		{
+			if(line[i]=='<') brackets+=1;
+			if(line[i]=='>') brackets-=1;
+			if(line[i]==',' && brackets == 0) break;
+		}
+		return line.substr(i+1);
+	}  
+
+	string get_first_base(const string line) // get the super class of this declarations
+	{
+		unsigned i;
+		int brackets = 0;
+		for(i = 0;i<line.length()-1;i++)
+		{
+			if(line[i]=='<') brackets+=1;
+			if(line[i]=='>') brackets-=1;
+			if(line[i]==',' && brackets == 0) break;
+		}
+		return line.substr(0,i);
+	}  
+
+
+	bool is_state(const string line) // test if it is a state
+	{
+		if(cut_namespaces(line).compare(0,12,"simple_state")==0)
 		{
 			return true;	
 		}
-		return false;
-	}
-}
-// Transitions
-std::string cut_typedef(std::string line) // cut typedef from the beginning
-{
-	if(line.compare(0,8,"typedef ")==0)
-	{
-		return line.substr(8);
-	}
-	else return line;	
-}
-
-int count(const std::string line, const char c) //count all < in string
-{
-	int number = 0;
-	for(unsigned i = 0;i<line.length();i++)
-	{
-		if(line[i]==c) number+=1;
-	}
-	return number;
-}
-
-bool is_list(const std::string line)
-{
-	//std::cout<<line<<"\n";
-	int pos = 0;
-	for(unsigned i = 0; i<line.length();i++)
-	{
-		if(line[i]=='<') break;
-		if(line[i]==':' && line[i+1]==':') pos = i+2;
-	}	
-	if(line.substr(pos).compare(0,4,"list")==0)
-	{
-		return true;	
-	}
-	else
-	{
-		return false;
-	}
-}
-
-std::string get_inner_part(const std::string line)
-{
-	std::string str;
-	unsigned i, pos = 0;
-	for(i = 0;i<line.length();i++)
-	{
-		if(line[i]=='<') break;
-	}
-	str = line.substr(i+1);
-	for(i = 0;i<str.length();i++)
-	{
-		if(str[i]=='<') pos+=1;
-		if(str[i]=='>')
-		{ 
-			if(pos==0) break;
-			else pos-=1;
+		else
+		{
+			if(cut_namespaces(line).compare(0,5,"state")==0)
+			{
+				return true;	
+			}
+			return false;
 		}
 	}
-	//std::cout<<str.substr(0,i);
-	return str.substr(0,i);
-}
 
-bool is_transition(const std::string line)
-{
-	if(cut_namespaces(line).compare(0,10,"transition")==0)
+	string cut_typedef(string line) // cut typedef from the beginning
 	{
-		return true;	
+		if(line.compare(0,8,"typedef ")==0)
+		{
+			return line.substr(8);
+		}
+		else return line;	
 	}
-	else
+
+	int count(const string line, const char c) //count all specified char in string
 	{
+		int number = 0;
+		for(unsigned i = 0;i<line.length();i++)
+		{
+			if(line[i]==c) number+=1;
+		}
+		return number;
+	}
+
+	bool is_list(const string line) // is it a list?
+	{
+		//cout<<line<<"\n";
+		int pos = 0;
+		for(unsigned i = 0; i<line.length();i++)
+		{
+			if(line[i]=='<') break;
+			if(line[i]==':' && line[i+1]==':') pos = i+2;
+		}	
+		if(line.substr(pos).compare(0,4,"list")==0)
+		{
+			return true;	
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	string get_inner_part(const string line) // get inner part of the list
+	{
+		string str;
+		unsigned i, pos = 0;
+		for(i = 0;i<line.length();i++)
+		{
+			if(line[i]=='<') break;
+		}
+		str = line.substr(i+1);
+		for(i = 0;i<str.length();i++)
+		{
+			if(str[i]=='<') pos+=1;
+			if(str[i]=='>')
+			{ 
+				if(pos==0) break;
+				else pos-=1;
+			}
+		}
+		//cout<<str.substr(0,i);
+		return str.substr(0,i);
+	}
+
+	bool is_model(const string line, const string model) // is it a transition
+	{
+		if(cut_namespaces(line).compare(0,model.length(),model)==0)
+		{
+			return true;	
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	string get_params(string line) // get parameters of transition
+	{
+		int pos_front = line.find("<")+1;
+		int pos_end = line.find(">");
+		return line.substr(pos_front,pos_end-pos_front);
+	}
+
+	string find_states(const CXXRecordDecl *cRecDecl, std::string line) // test if the struct/class is the state (must be derived from simple_state)
+	{	
+		string super_class = get_super_class(line), base, params;		
+		if(cRecDecl->getNumBases()>1)
+		{
+			for(unsigned i = 0; i<cRecDecl->getNumBases();i++ )
+			{
+				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
+				else base = super_class;
+				if(is_state(super_class)) 
+				{
+					params = get_params(super_class);
+				}
+				else
+				{
+					super_class = get_next_base(super_class);
+				}
+			}
+		}
+		else
+		{ 
+			if(is_state(super_class)) 
+			{
+				//std::cout<<get_params(super_class);
+				params = get_params(super_class);
+			}
+			else params = "";
+		}
+		return params;
+	}
+		
+	string find_name_of_machine(const CXXRecordDecl *cRecDecl, std::string line) // find name of the state machine and the start state
+	{	
+		std::string super_class = get_super_class(line), base, params;
+		if(cRecDecl->getNumBases()>1)
+		{
+			for(unsigned i = 0; i<cRecDecl->getNumBases();i++ )
+			{
+				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
+				else base = super_class;
+				if(is_model(base,"state_machine"))
+				{
+					params = get_params(base);
+				}
+				else
+				{
+					super_class = get_next_base(super_class);
+				}
+			}
+		}
+		else
+		{ 
+			if(is_model(super_class,"state_machine"))
+			{
+				//std::cout<<super_class;
+				params = get_params(super_class);
+				//std::cout<<params;
+			}
+		}
+		return params;
+	}
+
+	string find_transitions (const string name_of_state, const DeclContext *declCont) // traverse all methods for finding declarations of transitions
+	{	
+		string output, line, dest, params, base, trans;
+		llvm::raw_string_ostream x(output);
+		int num = 0;
+		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
+		{
+			const Decl *decl = *i;
+			if (decl->getKind()==26) 
+			{
+				decl->print(x);
+				output = x.str();
+				line = clean_spaces(cut_typedef(output));
+			}
+		}
+		num = count(line,'<');	
+		if(num>1)
+		{
+			num-=1;
+			if(is_list(line))
+			{
+				line = get_inner_part(line);
+			}
+		}
+		for(int j = 0;j<num;j++)
+		{
+			if(j!=num-1) base = get_first_base(line);			
+			else base = line;
+			if(is_model(base,"transition"))
+			{
+				dest = name_of_state;
+				params = get_params(base);
+				//cout<<params<<"\n";
+				dest.append(",");							
+				dest.append(params);
+				line = get_next_base(line);
+				trans.append(dest);
+				if(j+1!=num) trans.append(";");
+			}
+			else
+			{
+				line = get_next_base(line);
+			}
+		}
+		return trans;	
+	}
+	bool find_events(const CXXRecordDecl *cRecDecl, std::string line) // test if the decl is decl of event
+	{	
+		std::string super_class = get_super_class(line), base, params;
+		if(cRecDecl->getNumBases()>1)
+		{
+			for(unsigned i = 0; i<cRecDecl->getNumBases();i++ )
+			{
+				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
+				else base = super_class;
+				if(is_model(base,"event")) return true;
+				else
+				{
+					super_class = get_next_base(super_class);
+				}
+			}
+		}
+		else
+		{ 
+			if(is_model(super_class,"event"))return true;
+		}
 		return false;
 	}
-}
+};
 
-std::string get_params(std::string line)
-{
-	int pos_front = line.find("<")+1;
-	int pos_end = line.find(">");
-	std::string params;
-	params = line.substr(pos_front,pos_end-pos_front);
-	return params;
-	
-}
-
-bool is_machine(const std::string line)
-{
-	if(cut_namespaces(line).compare(0,13,"state_machine")==0)
-	{
-		return true;	
-	}
-	else
-	{
-		return false;
-	}
-}
