@@ -183,7 +183,7 @@ class StringDecl
 		return str.substr(0,i);
 	}
 
-	bool is_model(const string line, const string model) // is it a transition
+	bool test_model(const string line, const string model) // is it a transition
 	{
 		if(cut_namespaces(line).compare(0,model.length(),model)==0)
 		{
@@ -242,7 +242,7 @@ class StringDecl
 			{
 				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
 				else base = super_class;
-				if(is_model(base,"state_machine"))
+				if(test_model(base,"state_machine"))
 				{
 					params = get_params(base);
 				}
@@ -254,7 +254,7 @@ class StringDecl
 		}
 		else
 		{ 
-			if(is_model(super_class,"state_machine"))
+			if(test_model(super_class,"state_machine"))
 			{
 				//std::cout<<super_class;
 				params = get_params(super_class);
@@ -292,9 +292,21 @@ class StringDecl
 		{
 			if(j!=num-1) base = get_first_base(line);			
 			else base = line;
-			if(is_model(base,"transition"))
+			if(test_model(base,"transition"))
 			{
 				dest = name_of_state;
+				params = get_params(base);
+				//cout<<params<<"\n";
+				dest.append(",");							
+				dest.append(params);
+				line = get_next_base(line);
+				trans.append(dest);
+				if(j+1!=num) trans.append(";");
+			}
+			else if(test_model(base,"custom_reaction"))
+			{
+				dest = ";";
+				dest.append(name_of_state);
 				params = get_params(base);
 				//cout<<params<<"\n";
 				dest.append(",");							
@@ -308,6 +320,7 @@ class StringDecl
 				line = get_next_base(line);
 			}
 		}
+		if(trans[trans.length()-1]==';') return trans.substr(0,trans.length()-1)	;	
 		return trans;	
 	}
 	bool find_events(const CXXRecordDecl *cRecDecl, std::string line) // test if the decl is decl of event
@@ -319,7 +332,7 @@ class StringDecl
 			{
 				if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
 				else base = super_class;
-				if(is_model(base,"event")) return true;
+				if(test_model(base,"event")) return true;
 				else
 				{
 					super_class = get_next_base(super_class);
@@ -328,7 +341,7 @@ class StringDecl
 		}
 		else
 		{ 
-			if(is_model(super_class,"event"))return true;
+			if(test_model(super_class,"event"))return true;
 		}
 		return false;
 	}

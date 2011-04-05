@@ -37,7 +37,7 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 	MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false){}
 	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
 	{
-		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info);
+		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info); // print diagnostic information
 		if(DiagLevel > 2) // if error/fatal error stop the program
 		{		
 			exit(1);
@@ -48,10 +48,13 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 class FindStates : public ASTConsumer
 {
 	list<string> transitions;
+
+	list<string> cReactions;
 	list<string> events;
 	string name_of_machine;
 	string name_of_start;
 	StringDecl sd;	
+	int nbrStates;
 	public:
 	list<string> states;
 	
@@ -59,6 +62,7 @@ class FindStates : public ASTConsumer
 	{	
 		name_of_start = "";
 		name_of_machine = "";
+		nbrStates = 0;
 	}
 
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
@@ -73,12 +77,14 @@ class FindStates : public ASTConsumer
 			if(loc.isValid())
 			{
 				//cout<<decl->getKind()<<"ss\n";
-				//decl->dump();
+				if(const CXXMethodDecl *cMDecl = dyn_cast<CXXMethodDecl>(decl))
+				{
+					//decl->dump();
+				}
 				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
 					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a struct or class	
 					{
-						//std::cout<<namedDecl->getNameAsString()<<"\n";
 						struct_class(decl);
 					}
 				}	
@@ -104,14 +110,21 @@ class FindStates : public ASTConsumer
 			loc = decl->getLocation();
 			if(loc.isValid())
 			{	
-				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
+				if(const CXXMethodDecl *cMDecl = dyn_cast<CXXMethodDecl>(decl))
+				{
+					/*TODO
+						get Base class, test name and chcek if it is a state
+						
+					*/
+				}
+				else if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
 					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
 					{
 						struct_class(decl);
 					}	
 				}
-				if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
+				else if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
 				{
 					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
 					//cout<<namedDecl->getNameAsString()<<"  sss\n";			
@@ -134,8 +147,7 @@ class FindStates : public ASTConsumer
 		if(sd.is_derived(line))
 		{
 			const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
-			
-			
+					
 			if(sd.find_events(cRecDecl, line))
 			{
 				events.push_back(namedDecl->getNameAsString());
@@ -165,14 +177,26 @@ class FindStates : public ASTConsumer
 					ret = sd.find_transitions(namedDecl->getNameAsString(), declCont);
 					if(!ret.empty()) 
 					{
-						num = sd.count(ret,';');
+						num = sd.count(ret,';')+1;
 						for(int i = 0;i<num;i++)
 						{
 							pos = ret.find(";");
-							transitions.push_back(ret.substr(0,pos));
-							ret = ret.substr(pos+1);	
+							if(pos == 0)
+							{
+								ret = ret.substr(1);
+								pos = ret.find(";");
+								if(pos==-1) cReactions.push_back(ret);
+								else cReactions.push_back(ret.substr(0,pos));	
+								num-=1;
+							}
+							else 
+							{
+								if(pos==-1) transitions.push_back(ret);
+								else transitions.push_back(ret.substr(0,pos));
+							}
+							//cout<<ret<<"\n";
+							if(i!=num-1) ret = ret.substr(pos+1);
 						}
-						transitions.push_back(ret);
 					}
 				}
 			}
@@ -181,6 +205,7 @@ class FindStates : public ASTConsumer
 	
 	void save_to_file(std::string output) // save all to the output file
 	{
+		nbrStates = states.size();
 		std::string state, str, context, ctx;
 		int pos1, pos2, cnt, subs;
 		std::ofstream filestr(output.c_str());
@@ -273,8 +298,16 @@ class FindStates : public ASTConsumer
 		filestr<<"}";
 		filestr.close();
 	}
-};
+	void print_stats() // print statistics
+	{
+		cout<<"\n"<<"Statistics: \n";
+		cout<<"Number of states: "<<nbrStates<<"\n";
+		cout<<"Number of events: "<<events.size()<<"\n";
+		cout<<"Number of transitions: "<<transitions.size()<<"\n";
+		return;
+	}
 
+};
 
 int main(int argc, char **argv)
 { 
@@ -345,5 +378,6 @@ int main(int argc, char **argv)
 	mdc->EndSourceFile(); //end using diagnostic
 	if(c.states.size()>0) c.save_to_file(outputFilename);
 	else cout<<"No state machine was found\n";
+	c.print_stats();
 	return 0;
 }
