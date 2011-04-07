@@ -1,0 +1,25 @@
+Overview:
+Boost-staechart-viewer is a program for visualization state machines written using library boost/statechart. It is written in c++ using clang and LLVM. For compiling and correctly working program is necessary to have LLVM and clang version 2.9.
+
+Authors:
+Michal Sojka  sojkam1@fel.cvut.cz
+Petr Silhavik silhape2@fel.cvut.cz
+
+Status:
+Program can found states and transitions. Now it doesn't support orthogonal states. The state machine can be inside many namespaces, but not inside templates. State machine can be defined in more than one file. Program accepts all options and flags of command line as compilers(gcc, clang, ...).
+
+Using:
+For using the program you need to specify locations for all header files except of the files stored in system folder(in linux: /usr/...) using -I option. Of course you can specify the output filename(-o). Program displays all diagnostic messages like compilers. If an error occurs the program stops.
+
+Example of using command line: 
+./visualizer main.cpp -o graph.dot -I /home/petr/install/
+
+The output file can be transformed into the picture using classical dot commands. The start state is double outllined. Each transition has transition has label with the name of the event.
+
+Download:
+Boost statechart viewer can be downloaded from GIT repository.
+
+git clone git://rtime.felk.cvut.cz/boost-statechart-viewer.git
+
+You can also browse the repository online.
+
