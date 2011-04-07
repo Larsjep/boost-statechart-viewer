@@ -43,7 +43,16 @@ class StringDecl
 		return cut_commentary(ret);
 	} 
 
-
+	string get_return(const string code)
+	{
+		string ret;	
+		unsigned i;
+		for(i = 0;i<code.length();i++)
+		{
+			if(code[i]==' ') break;
+		}
+		return code.substr(0,i);
+	}
 
 	string cut_namespaces(string line) //cut namespaces from the name of the state
 	{
@@ -123,13 +132,14 @@ class StringDecl
 		}
 	}
 
-	string cut_typedef(string line) // cut typedef from the beginning
+	string cut_type(string line) // cut typedef from the beginning
 	{
-		if(line.compare(0,8,"typedef ")==0)
+		unsigned i;
+		for(i = 0;i<line.length();i++)
 		{
-			return line.substr(8);
+			if(line[i]==' ') break;
 		}
-		else return line;	
+		return line.substr(i);
 	}
 
 	int count(const string line, const char c) //count all specified char in string
@@ -264,21 +274,12 @@ class StringDecl
 		return params;
 	}
 
-	string find_transitions (const string name_of_state, const DeclContext *declCont) // traverse all methods for finding declarations of transitions
+	string find_transitions (const string name_of_state, string line) // traverse all methods for finding declarations of transitions
 	{	
-		string output, line, dest, params, base, trans;
+		string output, dest, params, base, trans;
 		llvm::raw_string_ostream x(output);
 		int num = 0;
-		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
-		{
-			const Decl *decl = *i;
-			if (decl->getKind()==26) 
-			{
-				decl->print(x);
-				output = x.str();
-				line = clean_spaces(cut_typedef(output));
-			}
-		}
+		
 		num = count(line,'<');	
 		if(num>1)
 		{
