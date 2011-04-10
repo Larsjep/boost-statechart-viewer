@@ -320,7 +320,8 @@ class StringDecl
 				line = get_next_base(line);
 			}
 		}
-		return trans.substr(0,trans.length()-1);	
+		if(trans[trans.length()-1]==';') return trans.substr(0,trans.length()-1);
+		else return trans;	
 	}
 	bool find_events(const CXXRecordDecl *cRecDecl, std::string line) // test if the decl is decl of event
 	{	
