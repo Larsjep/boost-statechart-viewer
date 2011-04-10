@@ -79,32 +79,8 @@ class FindStates : public ASTConsumer
 			{
 				//cout<<decl->getKind()<<"ss\n";
 				if(decl->getKind()==35)
-				{
-					if(decl->hasBody())
-					{
-						decl->print(x);
-						line = sd.get_return(x.str());
-						if(sd.test_model(line,"result"))
-						{
-							const FunctionDecl *fDecl = dyn_cast<FunctionDecl>(decl);
-							const ParmVarDecl *pvd = fDecl->getParamDecl(0);
-							QualType qt = pvd->getOriginalType(); 				
-							event = qt.getAsString();
-							if(event[event.length()-1]=='&') event = event.substr(0,event.length()-2);
-							event = event.substr(event.rfind(" ")+1);
-							line = dyn_cast<NamedDecl>(decl)->getQualifiedNameAsString();
-							line = sd.cut_namespaces(line.substr(0,line.rfind("::")));
-							line.append(",");
-							line.append(event);
-							find_return_stmt(decl->getBody(),line); //odebrat ze seznamu customReactions				
-							cout<<line<<"\n";
-							/*TODO
-							3. Najit return statement(nutno projit celou metodu, protoze jich muze byt vice).
-							Asi rekurze, protoze kazde muze mit deti. Dump na vypis, ale potreba sourceManager
-							*/
-							
-						}
-					}
+				{					
+					method_decl(decl);
 				}
 				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
@@ -127,7 +103,7 @@ class FindStates : public ASTConsumer
 	}
 	void recursive_visit(const DeclContext *declCont) //recursively visit all decls hidden inside namespaces
 	{
-      std::string line, output;
+      std::string line, output, event;
 		llvm::raw_string_ostream x(output);
 		SourceLocation loc;
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i)
@@ -139,23 +115,7 @@ class FindStates : public ASTConsumer
 			{	
 				if(decl->getKind()==35)
 				{
-					if(decl->hasBody())
-					{
-						decl->print(x);
-						line = sd.get_return(x.str());
-						if(sd.test_model(line,"result"))
-						{
-							line = sd.cut_type(x.str());
-							cout<<line<<"\n";
-							/*TODO
-							1. Otestovat jmeno tridy.
-							2. Ziskat parametr
-							3. Najit return statement(nutno projit celou metodu, protoze jich muze byt vice).
-							Asi rekurze, protoze kazde muze mit deti. Dump na vypis, ale potreba sourceManager
-							*/
-							
-						}
-					}
+					method_decl(decl);
 				}
 				else if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
@@ -177,7 +137,7 @@ class FindStates : public ASTConsumer
 		
 	void struct_class(const Decl *decl) // works with struct or class decl
 	{
-		string output, line, ret, trans;	
+		string output, line, ret, trans, event;	
 		llvm::raw_string_ostream x(output);
 		decl->print(x);
 		line = sd.get_line_of_code(x.str());
@@ -250,71 +210,102 @@ class FindStates : public ASTConsumer
 								output="";
 							}
 						}
-						if(decl->getKind()==35)
-						{
-							if(sd.test_model(dyn_cast<NamedDecl>(decl)->getNameAsString(),"react"))
-							{
-								if(decl->hasBody())
-									cout<<"haha\n";
-							}
-						}
+						if(decl->getKind()==35) method_decl(decl);
 					}
 				}
 			}
 		}
 	}
-	void find_return_stmt(Stmt *stmt,string event)
+	void method_decl(const Decl *decl)
 	{
-		const SourceManager &sman = fsloc->getManager();
-		int type;
-		string line;
-		int pos;
-		for (Stmt::child_range range = stmt->children(); range; ++range)    
+		string output, line, event;	
+		llvm::raw_string_ostream x(output);
+		if(decl->hasBody())
 		{
-			Stmt *stmt = *range;
-			type = stmt->getStmtClass();			
-			switch(type)
-			{	
-				case 8 :		find_return_stmt(dyn_cast<DoStmt>(stmt)->getBody(), event); // do
-								break;
-				case 86 :	find_return_stmt(dyn_cast<ForStmt>(stmt)->getBody(), event); // for
-								break;
-				case 88 :   find_return_stmt(dyn_cast<IfStmt>(stmt)->getThen(), event); //if then
-								find_return_stmt(dyn_cast<IfStmt>(stmt)->getElse(), event); //if else
-								break;
-				case 90 :	find_return_stmt(dyn_cast<LabelStmt>(stmt)->getSubStmt(), event); //label
-								break;
-				case 98 :	line = sman.getCharacterData(dyn_cast<ReturnStmt>(stmt)->getReturnLoc()); 
-								line = sd.get_line_of_code(line).substr(6);
-								if(sd.test_model(line,"transit")) cout<<line<<"\n";
-								break;
-				case 99 :  	line = sman.getCharacterData(dyn_cast<CaseStmt>(stmt)->getCaseLoc()); //return
-								line = line.substr(line.find(":")+1);
-								pos = line.find("return ");
-								if(pos!=-1 && pos<line.find(";")) 
-								{
-									line = sd.get_line_of_code(line).substr(6);
-									if(sd.test_model(line,"transit")) cout<<line<<"\n"; 
-								}
-								break;
-				case 101 : 	find_return_stmt(dyn_cast<SwitchStmt>(stmt)->getBody(), event); // switch
-								break;
-				case 102 : 	find_return_stmt(dyn_cast<WhileStmt>(stmt)->getBody(), event); // while
-								break;
+			decl->print(x);
+			line = sd.get_return(x.str());
+			if(sd.test_model(line,"result"))
+			{
+				const FunctionDecl *fDecl = dyn_cast<FunctionDecl>(decl);
+				const ParmVarDecl *pvd = fDecl->getParamDecl(0);
+				QualType qt = pvd->getOriginalType(); 				
+				event = qt.getAsString();
+				if(event[event.length()-1]=='&') event = event.substr(0,event.length()-2);
+				event = event.substr(event.rfind(" ")+1);
+				line = dyn_cast<NamedDecl>(decl)->getQualifiedNameAsString();
+				line = sd.cut_namespaces(line.substr(0,line.rfind("::")));
+				line.append(",");
+				line.append(event);
+				find_return_stmt(decl->getBody(),line); 
+				for(list<string>::iterator i = cReactions.begin();i!=cReactions.end();i++)
+				{
+					event = *i;
+					if(line.compare(event)==0) 
+					{
+						cReactions.erase(i);
+						break;
+					}
+				}	
+			}
+		}
+	}
+	void find_return_stmt(Stmt *statemt,string event)
+	{
+		if(statemt->getStmtClass() == 99) test_stmt(dyn_cast<CaseStmt>(statemt)->getSubStmt(), event);
+		else
+		{
+			for (Stmt::child_range range = statemt->children(); range; ++range)    
+			{
+				test_stmt(*range, event);
 			}
 		}
 	}
 	
+	void test_stmt(Stmt *stmt, string event)
+	{
+		const SourceManager &sman = fsloc->getManager();
+		int type;
+		string line, param;
+		type = stmt->getStmtClass();
+		switch(type)
+		{	
+			case 8 :		find_return_stmt(dyn_cast<DoStmt>(stmt)->getBody(), event); // do
+							break;
+			case 86 :	find_return_stmt(dyn_cast<ForStmt>(stmt)->getBody(), event); // for
+							break;
+			case 88 :   find_return_stmt(dyn_cast<IfStmt>(stmt)->getThen(), event); //if then
+							find_return_stmt(dyn_cast<IfStmt>(stmt)->getElse(), event); //if else
+							break;
+			case 90 :	find_return_stmt(dyn_cast<LabelStmt>(stmt)->getSubStmt(), event); //label
+							break;
+			case 98 :	line = sman.getCharacterData(dyn_cast<ReturnStmt>(stmt)->getReturnLoc()); 
+							line = sd.get_line_of_code(line).substr(6);
+							line = line.substr(0,line.find("("));
+							if(sd.test_model(line,"transit"))
+							{
+								param = sd.get_params(line);
+								transitions.push_back(event.append(",").append(param));
+							}
+							break;
+			case 99 :  	find_return_stmt(stmt, event);
+							break;
+			case 101 : 	find_return_stmt(dyn_cast<SwitchStmt>(stmt)->getBody(), event); // switch
+							break;
+			case 102 : 	find_return_stmt(dyn_cast<WhileStmt>(stmt)->getBody(), event); // while
+							break;
+			}
+	}
+
 	void save_to_file(std::string output) // save all to the output file
 	{
 		nbrStates = states.size();
-		std::string state, str, context, ctx;
+		string state, str, context, ctx;
 		int pos1, pos2, cnt, subs;
-		std::ofstream filestr(output.c_str());
+		ofstream filestr(output.c_str());
 		//std::cout<<output<<"\n";
 		filestr<<"digraph "<< name_of_machine<< " {\n";
 		context = name_of_machine;
-		for(list<std::string>::iterator i = states.begin();i!=states.end();i++) // write all states in the context of the automaton
+		for(list<string>::iterator i = states.begin();i!=states.end();i++) // write all states in the context of the automaton
 		{
 			state = *i;
 			cnt = sd.count(state,',');
@@ -364,8 +355,6 @@ class FindStates : public ASTConsumer
 				{
 					pos1 = state.find(",");
 					ctx = sd.cut_namespaces(state.substr(pos1+1));
-					
-					//std::cout<<ctx<<" "<<context<<"\n";
 					if(ctx.compare(0,context.length(),context)==0)
 					{
 						filestr<<sd.cut_namespaces(state.substr(0,pos1))<<";\n";
@@ -378,11 +367,7 @@ class FindStates : public ASTConsumer
 					pos1 = state.find(",");
 					pos2 = state.rfind(",");
 					ctx = sd.cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-					if(ctx.compare(0,context.length(),context)==0)
-					{				
-						filestr<<sd.cut_namespaces(state.substr(0,pos1))<<";\n";
-						//std::cout<<ctx<<"\n";
-					}
+					if(ctx.compare(0,context.length(),context)==0) filestr<<sd.cut_namespaces(state.substr(0,pos1))<<";\n";
 				}
 			}
 			filestr<<"}\n";

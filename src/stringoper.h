@@ -276,8 +276,7 @@ class StringDecl
 
 	string find_transitions (const string name_of_state, string line) // traverse all methods for finding declarations of transitions
 	{	
-		string output, dest, params, base, trans;
-		llvm::raw_string_ostream x(output);
+		string dest, params, base, trans;
 		int num = 0;
 		
 		num = count(line,'<');	
@@ -321,8 +320,7 @@ class StringDecl
 				line = get_next_base(line);
 			}
 		}
-		if(trans[trans.length()-1]==';') return trans.substr(0,trans.length()-1)	;	
-		return trans;	
+		return trans.substr(0,trans.length()-1);	
 	}
 	bool find_events(const CXXRecordDecl *cRecDecl, std::string line) // test if the decl is decl of event
 	{	
