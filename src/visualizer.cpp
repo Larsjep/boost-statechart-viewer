@@ -52,7 +52,6 @@ class FindStates : public ASTConsumer
 	list<string> events;
 	string name_of_machine;
 	string name_of_start;
-	StringDecl sd;	
 	int nbrStates;
 	FullSourceLoc *fsloc;
 	public:
@@ -69,7 +68,7 @@ class FindStates : public ASTConsumer
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
 	{
 		SourceLocation loc;
-      std::string line, output, event;
+      string line, output, event;
 		llvm::raw_string_ostream x(output);
 		for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
 		{
@@ -103,7 +102,7 @@ class FindStates : public ASTConsumer
 	}
 	void recursive_visit(const DeclContext *declCont) //recursively visit all decls hidden inside namespaces
 	{
-      std::string line, output, event;
+      string line, output, event;
 		llvm::raw_string_ostream x(output);
 		SourceLocation loc;
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i)
@@ -140,23 +139,22 @@ class FindStates : public ASTConsumer
 		string output, line, ret, trans, event;	
 		llvm::raw_string_ostream x(output);
 		decl->print(x);
-		line = sd.get_line_of_code(x.str());
+		line = get_line_of_code(x.str());
 		output = "";
-		int pos, num;
-		const TagDecl *tagDecl = dyn_cast<TagDecl>(decl);
+		int pos;
 		const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);		
-		if(sd.is_derived(line))
+		if(is_derived(line))
 		{
 			const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
 					
-			if(sd.find_events(cRecDecl, line))
+			if(find_events(cRecDecl, line))
 			{
 				events.push_back(namedDecl->getNameAsString());
 				cout<<"New event: "<<namedDecl->getNameAsString()<<"\n";
 			}
 			else if(name_of_machine == "")
 			{
-				ret = sd.find_name_of_machine(cRecDecl, line);
+				ret = find_name_of_machine(cRecDecl, line);
 				if(!ret.empty())
 				{
 					pos = ret.find(",");
@@ -168,54 +166,64 @@ class FindStates : public ASTConsumer
 			}
 			else
 			{
-				ret = sd.find_states(cRecDecl, line);	
+				ret = find_states(cRecDecl, line);	
 				if(!ret.empty())
-				{				
-					const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);		
-					//states.push_back(namedDecl->getNameAsString());
-					std::cout << "New state: " << namedDecl->getNameAsString() << "\n";
-					states.push_back(ret);
-					output="";
-					for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
-					{
-						const Decl *decl = *i;
-						if (decl->getKind()==26) 
-						{
-							decl->print(x);
-							output = x.str();
-							line = sd.clean_spaces(sd.cut_type(output));		
-							ret = sd.find_transitions(namedDecl->getNameAsString(),line);
-							if(!ret.empty()) 
-							{
-								num = sd.count(ret,';')+1;
-								for(int i = 0;i<num;i++)
-								{
-									pos = ret.find(";");
-									if(pos == 0)
-									{
-										ret = ret.substr(1);
-										pos = ret.find(";");
-										if(pos==-1) cReactions.push_back(ret);
-										else cReactions.push_back(ret.substr(0,pos));	
-										num-=1;
-									}
-									else 
-									{
-										if(pos==-1) transitions.push_back(ret);
-										else transitions.push_back(ret.substr(0,pos));
-									}
-									//cout<<ret<<"\n";
-									if(i!=num-1) ret = ret.substr(pos+1);
-								}
-								output="";
-							}
-						}
-						if(decl->getKind()==35) method_decl(decl);
-					}
+				{	
+					cout << "New state: " << namedDecl->getNameAsString() << "\n";
+					states.push_back(ret);			
+					methods_in_class(decl,namedDecl->getNameAsString());
 				}
 			}
 		}
 	}
+
+	void methods_in_class(const Decl *decl, const string state)
+	{
+		string output, line, ret, trans, event;	
+		llvm::raw_string_ostream x(output);
+		int pos, num;
+		const TagDecl *tagDecl = dyn_cast<TagDecl>(decl);
+		const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);		
+		//states.push_back(namedDecl->getNameAsString());
+		
+		output="";
+		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
+		{
+			if (i->getKind()==26) 
+			{
+				i->print(x);
+				output = x.str();
+				line = clean_spaces(cut_type(output));		
+				ret = find_transitions(state,line);
+				if(!ret.empty()) 
+				{
+					num = count(ret,';')+1;
+					for(int i = 0;i<num;i++)
+					{
+						pos = ret.find(";");
+						if(pos == 0)
+						{
+							ret = ret.substr(1);
+							pos = ret.find(";");
+							if(pos==-1) cReactions.push_back(ret);
+							else cReactions.push_back(ret.substr(0,pos));	
+							num-=1;
+						}
+						else 
+						{
+							if(pos==-1) transitions.push_back(ret);
+							else transitions.push_back(ret.substr(0,pos));
+						}
+						//cout<<ret<<"\n";
+						if(i!=num-1) ret = ret.substr(pos+1);
+					}
+					output="";
+				}
+			}
+			if(i->getKind()==35) method_decl(decl);
+		}
+	}
+
 	void method_decl(const Decl *decl)
 	{
 		string output, line, event;	
@@ -223,8 +231,8 @@ class FindStates : public ASTConsumer
 		if(decl->hasBody())
 		{
 			decl->print(x);
-			line = sd.get_return(x.str());
-			if(sd.test_model(line,"result"))
+			line = get_return(x.str());
+			if(test_model(line,"result"))
 			{
 				const FunctionDecl *fDecl = dyn_cast<FunctionDecl>(decl);
 				const ParmVarDecl *pvd = fDecl->getParamDecl(0);
@@ -233,7 +241,7 @@ class FindStates : public ASTConsumer
 				if(event[event.length()-1]=='&') event = event.substr(0,event.length()-2);
 				event = event.substr(event.rfind(" ")+1);
 				line = dyn_cast<NamedDecl>(decl)->getQualifiedNameAsString();
-				line = sd.cut_namespaces(line.substr(0,line.rfind("::")));
+				line = cut_namespaces(line.substr(0,line.rfind("::")));
 				line.append(",");
 				line.append(event);
 				find_return_stmt(decl->getBody(),line); 
@@ -245,10 +253,11 @@ class FindStates : public ASTConsumer
 						cReactions.erase(i);
 						break;
 					}
-				}	
+				}
 			}
 		}
 	}
+
 	void find_return_stmt(Stmt *statemt,string event)
 	{
 		if(statemt->getStmtClass() == 99) test_stmt(dyn_cast<CaseStmt>(statemt)->getSubStmt(), event);
@@ -279,11 +288,11 @@ class FindStates : public ASTConsumer
 			case 90 :	find_return_stmt(dyn_cast<LabelStmt>(stmt)->getSubStmt(), event); //label
 							break;
 			case 98 :	line = sman.getCharacterData(dyn_cast<ReturnStmt>(stmt)->getReturnLoc()); 
-							line = sd.get_line_of_code(line).substr(6);
+							line = get_line_of_code(line).substr(6);
 							line = line.substr(0,line.find("("));
-							if(sd.test_model(line,"transit"))
+							if(test_model(line,"transit"))
 							{
-								param = sd.get_params(line);
+								param = get_params(line);
 								transitions.push_back(event.append(",").append(param));
 							}
 							break;
@@ -296,7 +305,7 @@ class FindStates : public ASTConsumer
 			}
 	}
 
-	void save_to_file(std::string output) // save all to the output file
+	void save_to_file(string output) // save all to the output file
 	{
 		nbrStates = states.size();
 		string state, str, context, ctx;
@@ -308,15 +317,15 @@ class FindStates : public ASTConsumer
 		for(list<string>::iterator i = states.begin();i!=states.end();i++) // write all states in the context of the automaton
 		{
 			state = *i;
-			cnt = sd.count(state,',');
+			cnt = count(state,',');
 			if(cnt==1)
 			{
 				pos1 = state.find(",");
-				ctx = sd.cut_namespaces(state.substr(pos1+1));
+				ctx = cut_namespaces(state.substr(pos1+1));
 				//std::cout<<name_of_machine.length();				
 				if(ctx.compare(0,context.length(),context)==0)
 				{
-					filestr<<sd.cut_namespaces(state.substr(0,pos1))<<";\n";
+					filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
 					states.erase(i);
 					i--;
 				}
@@ -325,11 +334,11 @@ class FindStates : public ASTConsumer
 			{
 				pos1 = state.find(",");
 				pos2 = state.rfind(",");
-				ctx = sd.cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
+				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
 				//std::cout<<ctx<<" "<<context<<"\n";
 				if(ctx.compare(0,context.length(),context)==0)
 				{				
-					filestr<<sd.cut_namespaces(state.substr(0,pos1))<<";\n";
+					filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
 				}
 			}
 		}
@@ -341,23 +350,23 @@ class FindStates : public ASTConsumer
 			filestr<<"subgraph cluster"<<subs<<" {\n";			
 			pos1 = state.find(",");
 			pos2 = state.rfind(",");
-			context = sd.cut_namespaces(state.substr(0,pos1));
+			context = cut_namespaces(state.substr(0,pos1));
 			filestr<<"label=\""<<context<<"\";\n";
-			filestr<<sd.cut_namespaces(state.substr(pos2+1))<<" [peripheries=2] ;\n";	
+			filestr<<cut_namespaces(state.substr(pos2+1))<<" [peripheries=2] ;\n";	
 			states.pop_front();	
 			//std::cout<<states.size();	
 			for(list<string>::iterator i = states.begin();i!=states.end();i++)
 			{
 				state = *i;
-				cnt = sd.count(state,',');
+				cnt = count(state,',');
 				//std::cout<<state<<" \n";
 				if(cnt==1)
 				{
 					pos1 = state.find(",");
-					ctx = sd.cut_namespaces(state.substr(pos1+1));
+					ctx = cut_namespaces(state.substr(pos1+1));
 					if(ctx.compare(0,context.length(),context)==0)
 					{
-						filestr<<sd.cut_namespaces(state.substr(0,pos1))<<";\n";
+						filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
 						states.erase(i);
 						i--;
 					}
@@ -366,8 +375,8 @@ class FindStates : public ASTConsumer
 				{
 					pos1 = state.find(",");
 					pos2 = state.rfind(",");
-					ctx = sd.cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-					if(ctx.compare(0,context.length(),context)==0) filestr<<sd.cut_namespaces(state.substr(0,pos1))<<";\n";
+					ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
+					if(ctx.compare(0,context.length(),context)==0) filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
 				}
 			}
 			filestr<<"}\n";
@@ -377,10 +386,10 @@ class FindStates : public ASTConsumer
 		{
 			state = *i;
 			pos1 = state.find(",");
-			filestr<<sd.cut_namespaces(state.substr(0,pos1))<<"->";
+			filestr<<cut_namespaces(state.substr(0,pos1))<<"->";
 			pos2 = state.rfind(",");
-			filestr<<sd.cut_namespaces(state.substr(pos2+1));
-			filestr<<"[label=\""<<sd.cut_namespaces(state.substr(pos1+1,pos2-pos1-1))<<"\"];\n";
+			filestr<<cut_namespaces(state.substr(pos2+1));
+			filestr<<"[label=\""<<cut_namespaces(state.substr(pos1+1,pos2-pos1-1))<<"\"];\n";
 		}		
 		filestr<<"}";
 		filestr.close();
