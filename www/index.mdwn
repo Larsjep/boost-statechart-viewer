@@ -1,44 +1,56 @@
 [[!meta title="Boost Statechart Viewer"]]
 
-Overview:
+Overview
 ---------
 
-Boost-statechart-viewer is a program for visualization state machines
-written using library boost/statechart. It is written in C++ using
-clang and LLVM. For compiling and correctly working program is
-necessary to have LLVM and clang version 2.9.
+Boost-statechart-viewer is a program for visualization state state
+machines written in C++ with [boost][boost]/[statechart][statechart]
+library. The program itself is written in C++ and uses [clang][clang]
+from [LLVM][llvm] project for analyzing the source code.
 
-Authors:
+[boost]: http://www.boost.org/
+[statechart]: http://www.boost.org/doc/libs/1_46_1/libs/statechart/doc/index.html
+[clang]: http://clang.llvm.org/
+[llvm]: http://llvm.org/
+
+Authors
 --------
 
 Petr Silhavik <silhape2@fel.cvut.cz> <br>
 Michal Sojka  <sojkam1@fel.cvut.cz>
 
-Status:
+For compiling
+and correctly working program is necessary to have LLVM and clang
+version 2.9.
+
+
+Status
 -------
 
-Program can found states and transitions. Now it doesn't support
-orthogonal states. The state machine can be inside many namespaces,
-but not inside templates. State machine can be defined in more than
-one file. Program accepts all options and flags of command line as
-compilers(gcc, clang, ...).
+- The program can found states and transitions in the source code.
+- The program understands all options and flags as the compilers (gcc, clang, ...).
+- State machines can be defined in more than one file.
+- Now it doesn't support orthogonal states.
+- The state machine can be inside many namespaces, but not inside templates. 
 
-Using:
+Usage
 ------
 
-For using the program you need to specify locations for all header
-files except of the files stored in system folder(in linux: /usr/...)
-using -I option. Of course you can specify the output filename(-o).
-Program displays all diagnostic messages like compilers. If an error
-occurs the program stops.
+The program can be used almost the same way as a C compiler. You will
+typically need to specify locations for all header files except of the
+files stored in system folder(in Linux: /usr/...) using `-I` option.
+Of course you can specify the output filename (`-o` option). Program
+displays all diagnostic messages like compilers. If an error occurs
+the program stops.
 
-####Example of using command line: 
+####Example of command line invocation: 
 
     ./visualizer main.cpp -o graph.dot -I /home/petr/install/
 
 The output file can be transformed into the picture using classical
-dot commands. The start state is double outlined. Each transition has
-transition has label with the name of the event.
+dot commands (e.g. `dot -Tpng graph.dot -o graph.png`) . The initial
+state is double outlined. Each transition has a label with the name of
+the triggering event.
 
 Download:
 ---------
@@ -47,7 +59,7 @@ Boost statechart viewer can be downloaded from GIT repository.
 
     git clone git://rtime.felk.cvut.cz/boost-statechart-viewer.git
 
-You can also browse the repository [online][1].
+You can also browse the [repository online][1].
 
 
 Gallery
