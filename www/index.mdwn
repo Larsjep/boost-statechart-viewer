@@ -46,8 +46,10 @@ Gallery
 
 [[camera.png]] [Source code][4]
 
+[[big.png]] [Source code][5]
 
   [1]: http://rtime.felk.cvut.cz/gitweb/boost-statechart-viewer.git
   [2]: http://rtime.felk.cvut.cz/statechart-viewer/test.cpp
   [3]: http://rtime.felk.cvut.cz/statechart-viewer/StopWatch.cpp
   [4]: http://rtime.felk.cvut.cz/statechart-viewer/Camera.tar.gz
+  [5]: http://rtime.felk.cvut.cz/statechart-viewer/big_sm.tar.gz
