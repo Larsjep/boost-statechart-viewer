@@ -40,15 +40,19 @@ You can also browse the repository [online][1].
 Gallery
 -------
 
+### Small
 [[small.png]]  
 [[Source code|test.cpp]]
 
+### StopWatch
 [[stopWatch.png]]  
 [[Source code|StopWatch.cpp]]
 
+### Camera
 [[camera.png]]  
 [[Source code|StopWatch.cpp]]
 
+### Big
 [[big.png]]  
 [[Source code|big_sm.tar.gz]]
 
