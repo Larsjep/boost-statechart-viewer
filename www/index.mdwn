@@ -37,13 +37,17 @@ Boost statechart viewer can be downloaded from GIT repository.
 You can also browse the repository [online][1].
 
 
-  [1]: http://rtime.felk.cvut.cz/gitweb/boost-statechart-viewer.git
-
 Gallery
 -------
 
-[[small.png]]
+[[small.png]] [Source code][2]
 
-[[stopWatch.png]]
+[[stopWatch.png]] [Source code][3]
 
-[[camera.png]]
+[[camera.png]] [Source code][4]
+
+
+  [1]: http://rtime.felk.cvut.cz/gitweb/boost-statechart-viewer.git
+  [2]: http://rtime.felk.cvut.cz/statechart-viewer/test.cpp
+  [3]: http://rtime.felk.cvut.cz/statechart-viewer/StopWatch.cpp
+  [4]: http://rtime.felk.cvut.cz/statechart-viewer/Camera.tar.gz
