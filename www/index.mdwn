@@ -40,16 +40,16 @@ You can also browse the repository [online][1].
 Gallery
 -------
 
-[[small.png]] [Source code][2]
+[[small.png]]  
+[[Source code|test.cpp]]
 
-[[stopWatch.png]] [Source code][3]
+[[stopWatch.png]]  
+[[Source code|StopWatch.cpp]]
 
-[[camera.png]] [Source code][4]
+[[camera.png]]  
+[[Source code|StopWatch.cpp]]
 
-[[big.png]] [Source code][5]
+[[big.png]]  
+[[Source code|big_sm.tar.gz]]
 
   [1]: http://rtime.felk.cvut.cz/gitweb/boost-statechart-viewer.git
-  [2]: http://rtime.felk.cvut.cz/statechart-viewer/test.cpp
-  [3]: http://rtime.felk.cvut.cz/statechart-viewer/StopWatch.cpp
-  [4]: http://rtime.felk.cvut.cz/statechart-viewer/Camera.tar.gz
-  [5]: http://rtime.felk.cvut.cz/statechart-viewer/big_sm.tar.gz
