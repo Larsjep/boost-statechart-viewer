@@ -48,9 +48,11 @@ the program stops.
     ./visualizer main.cpp -o graph.dot -I /home/petr/install/
 
 The output file can be transformed into the picture using classical
-dot commands (e.g. `dot -Tpng graph.dot -o graph.png`) . The initial
+[dot][graphviz] commands (e.g. `dot -Tpng graph.dot -o graph.png`) . The initial
 state is double outlined. Each transition has a label with the name of
 the triggering event.
+
+[graphviz]: http://www.graphviz.org/
 
 Download:
 ---------
