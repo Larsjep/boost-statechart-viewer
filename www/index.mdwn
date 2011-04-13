@@ -45,3 +45,5 @@ Gallery
 [[small.png]]
 
 [[stopWatch.png]]
+
+[[camera.png]]
