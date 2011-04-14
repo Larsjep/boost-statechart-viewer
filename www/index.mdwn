@@ -6,7 +6,8 @@ Overview
 Boost-statechart-viewer is a program for visualization state state
 machines written in C++ with [boost][boost]/[statechart][statechart]
 library. The program itself is written in C++ and uses [clang][clang]
-from [LLVM][llvm] project for analyzing the source code.
+from [LLVM][llvm] project for analyzing the source code. This program is released under the GNU GPL
+license.
 
 [boost]: http://www.boost.org/
 [statechart]: http://www.boost.org/doc/libs/1_46_1/libs/statechart/doc/index.html
