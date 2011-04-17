@@ -436,9 +436,11 @@ int main(int argc, char **argv)
 	SourceManager sm (diag, fm);
 	HeaderSearch *headers = new HeaderSearch(fm);
 	
-	Driver TheDriver(LLVM_PREFIX "/bin", llvm::sys::getHostTriple(), "", false, false, diag);
+	Driver TheDriver(LLVM_BINDIR, llvm::sys::getHostTriple(), "", false, false, diag);
 	TheDriver.setCheckInputsExist(true);
 	TheDriver.CCCIsCXX = 1;	
+	TheDriver.ResourceDir = LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
+
 	CompilerInvocation compInv;
 	llvm::SmallVector<const char *, 16> Args(argv, argv + argc);
 	llvm::OwningPtr<Compilation> C(TheDriver.BuildCompilation(Args.size(),
@@ -466,11 +468,9 @@ int main(int argc, char **argv)
 	                                  diag);
 
 	HeaderSearchOptions hsopts = compInv.getHeaderSearchOpts();
-	hsopts.ResourceDir = LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
 	LangOptions lang = compInv.getLangOpts();
 	CompilerInvocation::setLangDefaults(lang, IK_ObjCXX);
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, compInv.getTargetOpts());
-	ApplyHeaderSearchOptions(*headers, hsopts, lang, ti->getTriple());
 	FrontendOptions f = compInv.getFrontendOpts();
 	inputFilename = f.Inputs[0].second;
 
