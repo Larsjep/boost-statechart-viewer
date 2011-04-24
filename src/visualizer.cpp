@@ -429,7 +429,9 @@ int main(int argc, char **argv)
 { 
 	string inputFilename = "";
 	string outputFilename = "graph.dot"; // initialize output Filename
-	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::errs(), * new DiagnosticOptions());
+	DiagnosticOptions dopts;
+	dopts.ShowColors=1;
+	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::errs(), dopts);
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());	
 	Diagnostic diag(dis,mdc);
 	FileManager fm( * new FileSystemOptions());
