@@ -20,9 +20,6 @@
 
 //standard header files
 #include <iostream>
-#include <string>
-#include <fstream>
-#include <list>
 
 //LLVM Header files
 #include "llvm/Support/raw_ostream.h"
@@ -45,7 +42,7 @@
 #include "clang/Driver/Compilation.h"
 
 //my own header files
-#include "stringoper.h"
+#include "iooper.h"
 
 using namespace clang;
 using namespace clang::driver;
@@ -70,19 +67,43 @@ class FindStates : public ASTConsumer
 	list<string> transitions;
 	list<string> cReactions;
 	list<string> events;
+	list<string> states;
 	string name_of_machine;
 	string name_of_start;
-	int nbrStates;
 	FullSourceLoc *fsloc;
+	
 	public:
-	list<string> states;
+
+	list<string> getStates()
+	{
+		return states;
+	}
+	
+	list<string> getTransitions()
+	{
+		return transitions;
+	}
+		
+	list<string> getEvents()
+	{
+		return events;
+	}
+
+	string getStateMachine()
+	{
+		return name_of_machine;
+	}
+
+	string getNameOfFirstState()
+	{
+		return name_of_start;
+	}
 	
 	virtual void Initialize(ASTContext &ctx)//run after the AST is constructed before the consumer starts to work
 	{	
 		fsloc = new FullSourceLoc(* new SourceLocation(), ctx.getSourceManager());
 		name_of_start = "";
 		name_of_machine = "";
-		nbrStates = 0;
 	}
 
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
@@ -322,105 +343,7 @@ class FindStates : public ASTConsumer
 							break;
 			case 102 : 	find_return_stmt(dyn_cast<WhileStmt>(stmt)->getBody(), event); // while
 							break;
-			}
-	}
-
-	void save_to_file(string output) // save all to the output file
-	{
-		nbrStates = states.size();
-		string state, str, context, ctx;
-		int pos1, pos2, cnt, subs;
-		ofstream filestr(output.c_str());
-		//std::cout<<output<<"\n";
-		filestr<<"digraph "<< name_of_machine<< " {\n";
-		context = name_of_machine;
-		for(list<string>::iterator i = states.begin();i!=states.end();i++) // write all states in the context of the automaton
-		{
-			state = *i;
-			cnt = count(state,',');
-			if(cnt==1)
-			{
-				pos1 = state.find(",");
-				ctx = cut_namespaces(state.substr(pos1+1));
-				//std::cout<<name_of_machine.length();				
-				if(ctx.compare(0,context.length(),context)==0)
-				{
-					filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
-					states.erase(i);
-					i--;
-				}
-			}
-			if(cnt==2)
-			{
-				pos1 = state.find(",");
-				pos2 = state.rfind(",");
-				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-				//std::cout<<ctx<<" "<<context<<"\n";
-				if(ctx.compare(0,context.length(),context)==0)
-				{				
-					filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
-				}
-			}
 		}
-		filestr<<name_of_start<<" [peripheries=2] ;\n";
-		subs = 0;
-		while(!states.empty()) // substates ?
-		{
-			state = states.front();
-			filestr<<"subgraph cluster"<<subs<<" {\n";			
-			pos1 = state.find(",");
-			pos2 = state.rfind(",");
-			context = cut_namespaces(state.substr(0,pos1));
-			filestr<<"label=\""<<context<<"\";\n";
-			filestr<<cut_namespaces(state.substr(pos2+1))<<" [peripheries=2] ;\n";	
-			states.pop_front();	
-			//std::cout<<states.size();	
-			for(list<string>::iterator i = states.begin();i!=states.end();i++)
-			{
-				state = *i;
-				cnt = count(state,',');
-				//std::cout<<state<<" \n";
-				if(cnt==1)
-				{
-					pos1 = state.find(",");
-					ctx = cut_namespaces(state.substr(pos1+1));
-					if(ctx.compare(0,context.length(),context)==0)
-					{
-						filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
-						states.erase(i);
-						i--;
-					}
-				}
-				if(cnt==2)
-				{
-					pos1 = state.find(",");
-					pos2 = state.rfind(",");
-					ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-					if(ctx.compare(0,context.length(),context)==0) filestr<<cut_namespaces(state.substr(0,pos1))<<";\n";
-				}
-			}
-			filestr<<"}\n";
-			subs+=1;	
-		}		
-		for(list<string>::iterator i = transitions.begin();i!=transitions.end();i++) // write all transitions
-		{
-			state = *i;
-			pos1 = state.find(",");
-			filestr<<cut_namespaces(state.substr(0,pos1))<<"->";
-			pos2 = state.rfind(",");
-			filestr<<cut_namespaces(state.substr(pos2+1));
-			filestr<<"[label=\""<<cut_namespaces(state.substr(pos1+1,pos2-pos1-1))<<"\"];\n";
-		}		
-		filestr<<"}";
-		filestr.close();
-	}
-	void print_stats() // print statistics
-	{
-		cout<<"\n"<<"Statistics: \n";
-		cout<<"Number of states: "<<nbrStates<<"\n";
-		cout<<"Number of events: "<<events.size()<<"\n";
-		cout<<"Number of transitions: "<<transitions.size()<<"\n";
-		return;
 	}
 
 };
@@ -494,8 +417,8 @@ int main(int argc, char **argv)
 	mdc->BeginSourceFile(lang, &pp);//start using diagnostic
 	ParseAST(pp, &c, ctx, false, false);
 	mdc->EndSourceFile(); //end using diagnostic
-	if(c.states.size()>0) c.save_to_file(outputFilename);
-	else cout<<"No state machine was found\n";
-	c.print_stats();
+	IO_operations *io = new IO_operations(outputFilename, c.getStateMachine(), c.getNameOfFirstState(), c.getTransitions(), c.getStates(), c.getEvents());	
+	io->save_to_file();
+	io->print_stats();
 	return 0;
 }

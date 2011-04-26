@@ -9,7 +9,7 @@ if [ -x llvm/configure ]; then
     mkdir -p llvm/_build
     (
 	cd llvm/_build
-	../configure --prefix=$TOP/_install --disable-optimized --enable-debug-runtime --enable-debug-symbols
+	../configure --prefix=$TOP/_install --enable-optimized 
     )
     LLVM_CONFIG=$TOP/_install/bin/llvm-config
 else
