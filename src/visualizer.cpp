@@ -50,15 +50,50 @@ using namespace std;
 
 class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 {
+	int nwarnings;
+	int nnotes;
+	int nignored;
 	public:
-	MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false){}
+	MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false)
+	{
+		nwarnings=0;
+		nnotes=0;
+		nignored=0;
+	}
 	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
 	{
 		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info); // print diagnostic information
-		if(DiagLevel > 2) // if error/fatal error stop the program
-		{		
-			exit(1);
-		}	
+		switch (DiagLevel)
+		{
+			case 0 : nignored+=1; break;
+			case 1 : nnotes+=1; break;
+			case 2 : nwarnings+=1; break;
+			default : print_stats(); exit(1);
+		}
+	}
+	
+	void print_stats()
+	{
+		cout<<"\n--Diagnostic Info--\n";
+		cout<<"Number of ignored: "<<nignored<<"\n";
+		cout<<"Number of notes: "<<nnotes<<"\n";
+		cout<<"Number of warnings: "<<nwarnings<<"\n";
+		cout<<"Number of errors and fatal errors: "<<1<<"\n";
+	}
+	
+	int getNbrOfWarnings()
+	{
+		return nwarnings;		
+	}
+	
+	int getNbrOfNotes()
+	{
+		return nnotes;		
+	}
+
+	int getNbrOfIgnored()
+	{
+		return nignored;		
 	}
 };
 
@@ -420,5 +455,6 @@ int main(int argc, char **argv)
 	IO_operations *io = new IO_operations(outputFilename, c.getStateMachine(), c.getNameOfFirstState(), c.getTransitions(), c.getStates(), c.getEvents());	
 	io->save_to_file();
 	io->print_stats();
+	mdc->print_stats();
 	return 0;
 }
