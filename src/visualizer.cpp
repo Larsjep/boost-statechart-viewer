@@ -53,12 +53,14 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 	int nwarnings;
 	int nnotes;
 	int nignored;
+	int nerrors;
 	public:
 	MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false)
 	{
 		nwarnings=0;
 		nnotes=0;
 		nignored=0;
+		nerrors = 0;
 	}
 	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
 	{
@@ -68,7 +70,9 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 			case 0 : nignored+=1; break;
 			case 1 : nnotes+=1; break;
 			case 2 : nwarnings+=1; break;
-			default : print_stats(); exit(1);
+			default : nerrors+=1; 
+						 print_stats(); 
+						 exit(1);
 		}
 	}
 	
@@ -78,7 +82,7 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 		cout<<"Number of ignored: "<<nignored<<"\n";
 		cout<<"Number of notes: "<<nnotes<<"\n";
 		cout<<"Number of warnings: "<<nwarnings<<"\n";
-		cout<<"Number of errors and fatal errors: "<<1<<"\n";
+		cout<<"Number of errors and fatal errors: "<<nerrors<<"\n";
 	}
 	
 	int getNbrOfWarnings()
