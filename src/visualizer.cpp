@@ -156,7 +156,6 @@ class FindStates : public ASTConsumer
 			loc = decl->getLocation();
 			if(loc.isValid())
 			{
-				//cout<<decl->getKind()<<"ss\n";
 				if(decl->getKind()==35)
 				{					
 					method_decl(decl);
@@ -222,7 +221,7 @@ class FindStates : public ASTConsumer
 		line = get_line_of_code(x.str());
 		output = "";
 		int pos;
-		const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);		
+		const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
 		if(is_derived(line))
 		{
 			const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
@@ -456,7 +455,7 @@ int main(int argc, char **argv)
 	mdc->BeginSourceFile(lang, &pp);//start using diagnostic
 	ParseAST(pp, &c, ctx, false, false);
 	mdc->EndSourceFile(); //end using diagnostic
-	IO_operations *io = new IO_operations(outputFilename, c.getStateMachine(), c.getNameOfFirstState(), c.getTransitions(), c.getStates(), c.getEvents());	
+	IO_operations *io = new IO_operations(outputFilename, c.getStateMachine(), c.getNameOfFirstState(), c.getTransitions(), c.getStates(), c.getEvents());
 	io->save_to_file();
 	io->print_stats();
 	mdc->print_stats();
