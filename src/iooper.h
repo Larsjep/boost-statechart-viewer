@@ -41,14 +41,14 @@ class IO_operations
 	{
 		if(type == 1)
 		{
-			for(unsigned i = 3;i<events.size()+3;i++)
+			for(int i = 3;i<cols;i++)
 			{
 				if(model.compare(0,model.size(),table[i])==0) return i;
 			}
 		}
 		else 
 		{
-			for(unsigned i = 1;i<states.size()+1;i++)
+			for(int i = 1;i<rows;i++)
 			if(model.compare(0,model.size(),table[i*cols+2])==0) return i;
 		}
 		return -1;
@@ -258,10 +258,10 @@ class IO_operations
 		unsigned * len = new unsigned[cols];
 		len[0] = 1;
 		string line = "-|---|-";
-		for(unsigned i = 1; i<cols; i++)
+		for(int i = 1; i<cols; i++)
 		{
 			len[i] = 0;
-			for(unsigned j = 0;j<rows;j++)
+			for(int j = 0;j<rows;j++)
 			{
 				if(len[i]<table[j*cols+i].length()) len[i] = table[j*cols+i].length();
 			}
@@ -272,10 +272,10 @@ class IO_operations
 			line.append("-|-");
 		}
 		cout<<line<<"\n";
-		for(unsigned i = 0; i<rows; i++)
+		for(int i = 0; i<rows; i++)
 		{
 			cout<<" | ";		
-			for(unsigned j = 0;j<cols;j++)
+			for(int j = 0;j<cols;j++)
 			{
 				cout.width(len[j]);
 				cout<<left<<table[i*cols+j]<<" | ";

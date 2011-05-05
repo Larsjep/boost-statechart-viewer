@@ -48,7 +48,7 @@ using namespace clang;
 using namespace clang::driver;
 using namespace std;
 
-class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
+class MyDiagnosticClient : public TextDiagnosticPrinter // Diagnostic Client
 {
 	int nwarnings;
 	int nnotes;
@@ -64,8 +64,8 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 	}
 	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
 	{
-		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info); // print diagnostic information
-		switch (DiagLevel)
+		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info); // print diagnostic information using library implementation
+		switch (DiagLevel) // count number of all diagnostic information
 		{
 			case 0 : nignored+=1; break;
 			case 1 : nnotes+=1; break;
@@ -76,7 +76,7 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 		}
 	}
 	
-	void print_stats()
+	void print_stats() // print statistics about diagnostic
 	{
 		cout<<"\n--Diagnostic Info--\n";
 		cout<<"Number of ignored: "<<nignored<<"\n";
@@ -85,24 +85,25 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // My diagnostic Client
 		cout<<"Number of errors and fatal errors: "<<nerrors<<"\n";
 	}
 	
-	int getNbrOfWarnings()
+	int getNbrOfWarnings() // get number of warnings
 	{
 		return nwarnings;		
 	}
 	
-	int getNbrOfNotes()
+	int getNbrOfNotes() // get number of notes
 	{
 		return nnotes;		
 	}
 
-	int getNbrOfIgnored()
+	int getNbrOfIgnored() // get number of ignored
 	{
 		return nignored;		
 	}
 };
 
-class FindStates : public ASTConsumer
+class FindStates : public ASTConsumer // AST Consumer interface for traversing AST
 {
+	// lists for saving information about state machine
 	list<string> transitions;
 	list<string> cReactions;
 	list<string> events;
@@ -110,7 +111,6 @@ class FindStates : public ASTConsumer
 	string name_of_machine;
 	string name_of_start;
 	FullSourceLoc *fsloc;
-	
 	public:
 
 	list<string> getStates()
@@ -145,6 +145,9 @@ class FindStates : public ASTConsumer
 		name_of_machine = "";
 	}
 
+/*
+	Traverse global decls using DeclGroupRef for handling all global decls.
+*/
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
 	{
 		SourceLocation loc;
@@ -179,6 +182,10 @@ class FindStates : public ASTConsumer
 			output = "";
 		}
 	}
+
+/*
+	It is used to recursive traverse decls in namespaces.
+*/
 	void recursive_visit(const DeclContext *declCont) //recursively visit all decls hidden inside namespaces
 	{
       string line, output, event;
@@ -213,6 +220,10 @@ class FindStates : public ASTConsumer
 		} 
 	}
 		
+/*
+	This function works with class or struct. It splits the decl into 3 interesting parts.
+	The state machine decl, state decl and event decl.
+*/
 	void struct_class(const Decl *decl) // works with struct or class decl
 	{
 		string output, line, ret, trans, event;	
@@ -245,7 +256,7 @@ class FindStates : public ASTConsumer
 			}
 			else
 			{
-				ret = find_states(cRecDecl, line);	
+				ret = find_states(cRecDecl, line); 
 				if(!ret.empty())
 				{	
 					cout << "New state: " << namedDecl->getNameAsString() << "\n";
@@ -256,19 +267,21 @@ class FindStates : public ASTConsumer
 		}
 	}
 
-	void methods_in_class(const Decl *decl, const string state)
+/* 
+	This function provides traversing all methods and other context indide class. If
+ 	typedef or classic method decl is found. Transitions inside it are beiing founded.
+*/
+	void methods_in_class(const Decl *decl, const string state) // traverse context inside one class
 	{
 		string output, line, ret, trans, event;	
 		llvm::raw_string_ostream x(output);
 		int pos, num;
 		const TagDecl *tagDecl = dyn_cast<TagDecl>(decl);
-		const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);		
-		//states.push_back(namedDecl->getNameAsString());
-		
+		const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);			
 		output="";
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
 		{
-			if (i->getKind()==26) 
+			if (i->getKind()==26) // typedefs
 			{
 				i->print(x);
 				output = x.str();
@@ -293,17 +306,16 @@ class FindStates : public ASTConsumer
 							if(pos==-1) transitions.push_back(ret);
 							else transitions.push_back(ret.substr(0,pos));
 						}
-						//cout<<ret<<"\n";
 						if(i!=num-1) ret = ret.substr(pos+1);
 					}
 					output="";
 				}
 			}
-			if(i->getKind()==35) method_decl(decl);
+			if(i->getKind()==35) method_decl(decl);// C++ method
 		}
 	}
 
-	void method_decl(const Decl *decl)
+	void method_decl(const Decl *decl) // method decl traverse. Using Stmt
 	{
 		string output, line, event;	
 		llvm::raw_string_ostream x(output);
@@ -324,7 +336,7 @@ class FindStates : public ASTConsumer
 				line.append(",");
 				line.append(event);
 				find_return_stmt(decl->getBody(),line); 
-				for(list<string>::iterator i = cReactions.begin();i!=cReactions.end();i++)
+				for(list<string>::iterator i = cReactions.begin();i!=cReactions.end();i++) // erase info about it from list of custom reactions
 				{
 					event = *i;
 					if(line.compare(event)==0) 
@@ -337,7 +349,7 @@ class FindStates : public ASTConsumer
 		}
 	}
 
-	void find_return_stmt(Stmt *statemt,string event)
+	void find_return_stmt(Stmt *statemt,string event) // traverse all statements in function for finding return Statement
 	{
 		if(statemt->getStmtClass() == 99) test_stmt(dyn_cast<CaseStmt>(statemt)->getSubStmt(), event);
 		else
@@ -349,7 +361,7 @@ class FindStates : public ASTConsumer
 		}
 	}
 	
-	void test_stmt(Stmt *stmt, string event)
+	void test_stmt(Stmt *stmt, string event) // test statement
 	{
 		const SourceManager &sman = fsloc->getManager();
 		int type;
