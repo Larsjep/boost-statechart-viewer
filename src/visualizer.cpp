@@ -151,7 +151,7 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
 	{
 		SourceLocation loc;
-      string line, output, event;
+		string line, output, event;
 		llvm::raw_string_ostream x(output);
 		for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
 		{
@@ -174,7 +174,6 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 				{
 					
 					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
-					//cout<<namedDecl->getNameAsString()<<"   sss\n";
 					recursive_visit(declCont);
 				
 				}
@@ -194,7 +193,6 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i)
 		{
 			const Decl *decl = *i;
-			//std::cout<<"a "<<decl->getDeclKindName()<<"\n";
 			loc = decl->getLocation();
 			if(loc.isValid())
 			{	
@@ -211,8 +209,7 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 				}
 				else if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
 				{
-					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
-					//cout<<namedDecl->getNameAsString()<<"  sss\n";			
+					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);			
 					recursive_visit(declCont);
 				}
 			}
@@ -240,7 +237,6 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 			if(find_events(cRecDecl, line))
 			{
 				events.push_back(namedDecl->getNameAsString());
-				cout<<"New event: "<<namedDecl->getNameAsString()<<"\n";
 			}
 			else if(name_of_machine == "")
 			{
@@ -250,16 +246,13 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 					pos = ret.find(",");
 					name_of_machine = ret.substr(0,pos);
 					name_of_start = ret.substr(pos+1);
-					cout<<"Name of the state machine: "<<name_of_machine<<"\n";
-					cout<<"Name of the first state: "<<name_of_start<<"\n";
 				}
 			}
 			else
 			{
 				ret = find_states(cRecDecl, line); 
 				if(!ret.empty())
-				{	
-					cout << "New state: " << namedDecl->getNameAsString() << "\n";
+				{
 					states.push_back(ret);			
 					methods_in_class(decl,namedDecl->getNameAsString());
 				}
