@@ -1,4 +1,4 @@
-
+/** @file */
 ////////////////////////////////////////////////////////////////////////////////////////  
 //    
 //    This file is part of Boost Statechart Viewer.
@@ -48,20 +48,33 @@ using namespace clang;
 using namespace clang::driver;
 using namespace std;
 
-class MyDiagnosticClient : public TextDiagnosticPrinter // Diagnostic Client
+/**
+ * This class provides Simple diagnostic Client. It uses implementation in library for printing diagnostci information.
+ * Also it counts number of warnings, errors, ... When an error occurs the program is stopped.
+ */
+class MyDiagnosticClient : public TextDiagnosticPrinter
 {
+        /**
+          * Variables for saving numbers of warnings, errors, ...
+          */
 	int nwarnings;
 	int nnotes;
 	int nignored;
 	int nerrors;
 	public:
-	MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false)
+        /**
+         * Initialize number of warnings, errors, ...
+         */
+        MyDiagnosticClient(llvm::raw_ostream &os, const DiagnosticOptions &diags, bool OwnsOutputStream = false):TextDiagnosticPrinter(os, diags, OwnsOutputStream = false)
 	{
 		nwarnings=0;
 		nnotes=0;
 		nignored=0;
 		nerrors = 0;
 	}
+        /**
+         * This method prints diagnostic and counts diagnostic types.
+         */
 	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
 	{
 		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info); // print diagnostic information using library implementation
@@ -75,8 +88,10 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // Diagnostic Client
 						 exit(1);
 		}
 	}
-	
-	void print_stats() // print statistics about diagnostic
+        /**
+         * Print statistics about diagnostic
+         */
+        void print_stats()
 	{
 		cout<<"\n--Diagnostic Info--\n";
 		cout<<"Number of ignored: "<<nignored<<"\n";
@@ -85,25 +100,27 @@ class MyDiagnosticClient : public TextDiagnosticPrinter // Diagnostic Client
 		cout<<"Number of errors and fatal errors: "<<nerrors<<"\n";
 	}
 	
-	int getNbrOfWarnings() // get number of warnings
+        int getNbrOfWarnings() /** Return number of warnings */
 	{
 		return nwarnings;		
 	}
 	
-	int getNbrOfNotes() // get number of notes
+        int getNbrOfNotes() /** Return number of notes */
 	{
 		return nnotes;		
 	}
 
-	int getNbrOfIgnored() // get number of ignored
+        int getNbrOfIgnored() /** Return number of ignored */
 	{
 		return nignored;		
 	}
 };
 
-class FindStates : public ASTConsumer // AST Consumer interface for traversing AST
+/**
+ * My ASTConsumer provides interface for traversing AST. It uses recursive traversing in namespaces.
+ */
+class FindStates : public ASTConsumer
 {
-	// lists for saving information about state machine
 	list<string> transitions;
 	list<string> cReactions;
 	list<string> events;
@@ -113,42 +130,43 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 	FullSourceLoc *fsloc;
 	public:
 
-	list<string> getStates()
+        list<string> getStates() /** Return list of states. */
 	{
 		return states;
 	}
 	
-	list<string> getTransitions()
+        list<string> getTransitions() /** Return list of transitions. */
 	{
 		return transitions;
 	}
 		
-	list<string> getEvents()
+        list<string> getEvents() /** Return list of events. */
 	{
 		return events;
 	}
 
-	string getStateMachine()
+        string getStateMachine() /** Return name of the state machine. */
 	{
 		return name_of_machine;
 	}
 
-	string getNameOfFirstState()
+        string getNameOfFirstState() /** Return name of start state. */
 	{
 		return name_of_start;
 	}
 	
-	virtual void Initialize(ASTContext &ctx)//run after the AST is constructed before the consumer starts to work
+        virtual void Initialize(ASTContext &ctx)/** Run after the AST is constructed before the consumer starts to work. So this function works like constructor. */
 	{	
 		fsloc = new FullSourceLoc(* new SourceLocation(), ctx.getSourceManager());
 		name_of_start = "";
 		name_of_machine = "";
 	}
 
-/*
-	Traverse global decls using DeclGroupRef for handling all global decls.
+/**
+*   Traverse global decls using DeclGroupRef for handling all global decls. But only interesting decls are processed. Interesting decls are Struct, Class, Method and Namespace.
+*   When Namespace is found it recursively traverse all decls inside this Namespace using method recursive_visit.
 */
-	virtual void HandleTopLevelDecl(DeclGroupRef DGR)// traverse all top level declarations
+        virtual void HandleTopLevelDecl(DeclGroupRef DGR)
 	{
 		SourceLocation loc;
 		string line, output, event;
@@ -182,12 +200,12 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 		}
 	}
 
-/*
-	It is used to recursive traverse decls in namespaces.
+/**
+*   It is used to recursive traverse decls in Namespaces. This method do the same as HandleTopLevelDecl.
 */
-	void recursive_visit(const DeclContext *declCont) //recursively visit all decls hidden inside namespaces
+        void recursive_visit(const DeclContext *declCont)
 	{
-      string line, output, event;
+                string line, output, event;
 		llvm::raw_string_ostream x(output);
 		SourceLocation loc;
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i)
@@ -217,11 +235,11 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 		} 
 	}
 		
-/*
-	This function works with class or struct. It splits the decl into 3 interesting parts.
-	The state machine decl, state decl and event decl.
+/**
+*	This function works with class or struct. It splits the decl into 3 interesting parts.
+*	The state machine decl, state decl and event decl.
 */
-	void struct_class(const Decl *decl) // works with struct or class decl
+        void struct_class(const Decl *decl)
 	{
 		string output, line, ret, trans, event;	
 		llvm::raw_string_ostream x(output);
@@ -260,11 +278,11 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 		}
 	}
 
-/* 
-	This function provides traversing all methods and other context indide class. If
- 	typedef or classic method decl is found. Transitions inside it are beiing founded.
+/**
+*	This function provides traversing all methods and other context indide class. If
+*	typedef or classic method decl is found. Transitions inside it are beiing founded.
 */
-	void methods_in_class(const Decl *decl, const string state) // traverse context inside one class
+        void methods_in_class(const Decl *decl, const string state)
 	{
 		string output, line, ret, trans, event;	
 		llvm::raw_string_ostream x(output);
@@ -308,7 +326,10 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 		}
 	}
 
-	void method_decl(const Decl *decl) // method decl traverse. Using Stmt
+        /**
+         * Traverse Method declaration using classes Stmt.
+         */
+        void method_decl(const Decl *decl)
 	{
 		string output, line, event;	
 		llvm::raw_string_ostream x(output);
@@ -320,7 +341,7 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 			{
 				const FunctionDecl *fDecl = dyn_cast<FunctionDecl>(decl);
 				const ParmVarDecl *pvd = fDecl->getParamDecl(0);
-				QualType qt = pvd->getOriginalType(); 				
+                                QualType qt = pvd->getOriginalType();
 				event = qt.getAsString();
 				if(event[event.length()-1]=='&') event = event.substr(0,event.length()-2);
 				event = event.substr(event.rfind(" ")+1);
@@ -342,7 +363,7 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 		}
 	}
 
-	void find_return_stmt(Stmt *statemt,string event) // traverse all statements in function for finding return Statement
+        void find_return_stmt(Stmt *statemt,string event) /** Traverse all statements in function for finding return Statement*/
 	{
 		if(statemt->getStmtClass() == 99) test_stmt(dyn_cast<CaseStmt>(statemt)->getSubStmt(), event);
 		else
@@ -354,7 +375,7 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 		}
 	}
 	
-	void test_stmt(Stmt *stmt, string event) // test statement
+        void test_stmt(Stmt *stmt, string event) /** test statement for its kind*/
 	{
 		const SourceManager &sman = fsloc->getManager();
 		int type;
@@ -390,7 +411,10 @@ class FindStates : public ASTConsumer // AST Consumer interface for traversing A
 	}
 
 };
-
+/**
+  * Main function provides all initialization before starting analysis of AST. Diagnostic Client is initialized,
+  * Command line options are processed.
+  */
 int main(int argc, char **argv)
 { 
 	string inputFilename = "";

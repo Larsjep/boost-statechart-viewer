@@ -26,6 +26,9 @@
 
 using namespace std;
 
+/**
+* This class provides saving information about state machine to a specified output file. It saves states and transitions and also it creates the transition table.
+*/
 class IO_operations
 {
 	list<string> transitions;
@@ -37,6 +40,7 @@ class IO_operations
 	string *table;
 	int nState;
 	int cols, rows;
+	/** This function finds place in the transition table to put a transition there. */
 	int find_place(string model, int type)
 	{
 		if(type == 1)
@@ -55,7 +59,6 @@ class IO_operations
 	}
 	public:
 	IO_operations() {}
-	
 	IO_operations( const string outputFile, const string FSM_name, const string firstState, const list<string> trans, const list<string> state, const list<string> ev )
 	{
 		outputFilename = outputFile;
@@ -69,39 +72,38 @@ class IO_operations
 	{
 		delete table;
 	}
-	// set methods
-	void setEvents(list<string> events)
+	
+	void setEvents(list<string> events) /** Set list of events to an attribute */
 	{
 		this->events = events;
 	}
 	
-	void setTransitions(list<string> transitions)
+	void setTransitions(list<string> transitions) /** Set list of transitions to an attribute */
 	{
 		this->transitions = transitions;
 	}
 
-	void setStates(list<string> states)
+	void setStates(list<string> states) /** Set list of states to an attribute */
 	{
 		this->states = states;
 	}
 
-	void setNameOfStateMachine(string name_of_FSM)
+	void setNameOfStateMachine(string name_of_FSM) /** Set name of FSM to an attribute */
 	{
 		name_of_machine = name_of_FSM;
 	}
 
-	void setNameOfFirstState(string first_state)
+	void setNameOfFirstState(string first_state) /** Set name of start state to an attribute */ 
 	{
 		name_of_first_state = first_state;
 	}
 
-	void setOutputFilename(string outputFilename)
+	void setOutputFilename(string outputFilename) /** Set name of an output file to an attribute */
 	{
 		this->outputFilename = outputFilename;
 	}
 	
-	// outputfile writing methods
-	void write_states(ofstream& filestr) // write states
+	void write_states(ofstream& filestr) /** This method write states to the output file and also to transition table. */
 	{
 		int pos1, pos2, cnt, subs;
 		nState = 1;
@@ -202,7 +204,7 @@ class IO_operations
 		return;
 	}
 
-	void write_transitions(ofstream& filestr) // write transitions
+	void write_transitions(ofstream& filestr) /** Write transitions to the output file nad the transition table. */
 	{
 		int pos1, pos2;
 		string params, state, event, dest;
@@ -222,7 +224,7 @@ class IO_operations
 		return;
 	}
 
-	void fill_table_with_events()
+	void fill_table_with_events() /** Fill the first row of the transition table with events. */
 	{
 		int j = 3;
 		for(list<string>::iterator i = events.begin();i!=events.end();i++)
@@ -232,7 +234,7 @@ class IO_operations
 		}
 	}
 
-	void save_to_file() // save state automaton to file
+	void save_to_file() /** Create output file stream and write there the name of state machine. It controls the whole process of writing into output files. */
 	{
 		if(!name_of_first_state.empty())	
 		{	
@@ -252,7 +254,7 @@ class IO_operations
 		return;
 	}
 
-	void print_table()
+	void print_table() /** This function prints the transition table. At first it counts the size of all columns. */
 	{
 		cout<<"\nTRANSITION TABLE\n";
 		unsigned * len = new unsigned[cols];
@@ -285,8 +287,8 @@ class IO_operations
 		}
 		delete len;
 	}
-	// method for printing statistics about state automaton
-	void print_stats() // print statistics
+
+	void print_stats() /** Print short statistics about the state machine */
 	{
 		cout<<"\n"<<"Statistics: \n";
 		cout<<"Number of states: "<<states.size()<<"\n";

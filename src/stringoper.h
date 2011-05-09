@@ -1,4 +1,4 @@
-
+/** @file */ 
 ////////////////////////////////////////////////////////////////////////////////////////  
 //    
 //    This file is part of Boost Statechart Viewer.
@@ -23,7 +23,7 @@
 using namespace std;
 using namespace clang;
 	
-string clean_spaces(const string line) // remove backspaces
+string clean_spaces(const string line) /** Remove gaps from string.*/
 {
 	unsigned i;
 	string new_line = "";
@@ -35,7 +35,7 @@ string clean_spaces(const string line) // remove backspaces
 	return new_line;
 }
 
-string cut_commentary(const string line) //cut commentary at the end of line
+string cut_commentary(const string line) /** This function cuts commentaries at the end of line. */
 {
 	unsigned i = 0;
 	for(i = 0;i<line.length()-1;i++)
@@ -46,11 +46,10 @@ string cut_commentary(const string line) //cut commentary at the end of line
 	return line;
 }
 
-string get_line_of_code(const string code) //return the line of code
+string get_line_of_code(const string code) /** Thie function return the line of code that belongs to a declaration. The output string line doesn't have gaps and commentaries.*/
 {
 	string ret;	
 	unsigned i;	
-	//cout<<code<<"\n\n";
 	for(i = 0;i<code.length();i++)
 	{
 		if(code[i]=='\n'||code[i]=='{') break;
@@ -60,7 +59,7 @@ string get_line_of_code(const string code) //return the line of code
 	return cut_commentary(ret);
 } 
 
-string get_return(const string code)
+string get_return(const string code) /** Return return statement. */
 {
 	string ret;	
 	unsigned i;
@@ -71,14 +70,14 @@ string get_return(const string code)
 	return code.substr(0,i);
 }
 
-string cut_namespaces(string line) //cut namespaces from the name of the state
+string cut_namespaces(string line) /** Cut namespaces from the declarations. */
 {
 	int i = line.rfind("::");
 	if(i==-1) return line;
 	return line.substr(i+2);
 }
 
-bool is_derived(const string line) // return true if the struct or class is derived
+bool is_derived(const string line) /** Test whether this struct or class is derived */
 {
 	unsigned i;
 	for(i = 0;i<line.length()-1;i++)
@@ -92,7 +91,7 @@ bool is_derived(const string line) // return true if the struct or class is deri
 	return false;
 }
 
-string get_super_class(const string line) // get the super class of this declarations
+string get_super_class(const string line) /** Get the super classes of this declarations. */
 {
 	unsigned i;
 	for(i = 0;i<line.length()-1;i++)
@@ -106,7 +105,7 @@ string get_super_class(const string line) // get the super class of this declara
 	return line.substr(i+1);
 }
 
-string get_next_base(const string line) // get the super class of this declarations
+string get_next_base(const string line) /** Get next super classes of this declarations Do the first super class is ommitted. */
 {
 	unsigned i;
 	int brackets = 0;
@@ -119,7 +118,7 @@ string get_next_base(const string line) // get the super class of this declarati
 	return line.substr(i+1);
 }  
 
-string get_first_base(const string line) // get the super class of this declarations
+string get_first_base(const string line) /** Get the first super class of this declarations. */
 {
 	unsigned i;
 	int brackets = 0;
@@ -132,7 +131,7 @@ string get_first_base(const string line) // get the super class of this declarat
 	return line.substr(0,i);
 }  
 
-bool is_state(const string line) // test if it is a state
+bool is_state(const string line) /** Test if this declaration is a state. It is used to test the base classes. */
 {
 	if(cut_namespaces(line).compare(0,12,"simple_state")==0)
 	{
@@ -148,7 +147,7 @@ bool is_state(const string line) // test if it is a state
 	}
 }
 
-string cut_type(string line) // cut typedef from the beginning
+string cut_type(string line) /** This function cuts type of the declaration from the string. */
 {
 	unsigned i;
 	for(i = 0;i<line.length();i++)
@@ -158,7 +157,7 @@ string cut_type(string line) // cut typedef from the beginning
 	return line.substr(i);
 }
 
-int count(const string line, const char c) //count all specified char in string
+int count(const string line, const char c) /** Count all specified char in string. So it returns the number of specified characters. */
 {
 	int number = 0;
 	for(unsigned i = 0;i<line.length();i++)
@@ -168,7 +167,7 @@ int count(const string line, const char c) //count all specified char in string
 	return number;
 }
 
-bool is_list(const string line) // is it a list?
+bool is_list(const string line) /** Test if this decl is mpl::list. */
 {
 	//cout<<line<<"\n";
 	int pos = 0;
@@ -187,7 +186,7 @@ bool is_list(const string line) // is it a list?
 	}
 }
 
-string get_inner_part(const string line) // get inner part of the list
+string get_inner_part(const string line) /** Get inner part of the list. */
 {
 	string str;
 	unsigned i, pos = 0;
@@ -205,11 +204,10 @@ string get_inner_part(const string line) // get inner part of the list
 			else pos-=1;
 		}
 	}
-	//cout<<str.substr(0,i);
 	return str.substr(0,i);
 }
 
-bool test_model(const string line, const string model) // is it a transition
+bool test_model(const string line, const string model) /** Test the string to has a specified model. */
 {
 	if(cut_namespaces(line).compare(0,model.length(),model)==0)
 	{
@@ -221,14 +219,14 @@ bool test_model(const string line, const string model) // is it a transition
 	}
 }
 
-string get_params(string line) // get parameters of transition
+string get_params(string line) /** Return parameters of the specified transition */
 {
 	int pos_front = line.find("<")+1;
 	int pos_end = line.find(">");
 	return line.substr(pos_front,pos_end-pos_front);
 }
 	
-string find_states(const CXXRecordDecl *cRecDecl, string line) // test if the struct/class is he state (must be derived from simple_state)
+string find_states(const CXXRecordDecl *cRecDecl, string line) /** test if the struct/class is he state (must be derived from simple_state or state). */
 {	
 	string super_class = get_super_class(line), base, params;		
 	if(cRecDecl->getNumBases()>1)
@@ -251,7 +249,6 @@ string find_states(const CXXRecordDecl *cRecDecl, string line) // test if the st
 	{ 
 		if(is_state(super_class)) 
 		{
-			//std::cout<<get_params(super_class);
 			params = get_params(super_class);
 		}
 		else params = "";
@@ -259,7 +256,7 @@ string find_states(const CXXRecordDecl *cRecDecl, string line) // test if the st
 	return params;
 }
 		
-string find_name_of_machine(const CXXRecordDecl *cRecDecl, string line) // find name of the state machine and the start state
+string find_name_of_machine(const CXXRecordDecl *cRecDecl, string line) /** Find name of the state machine and the start state. */
 {	
 	string super_class = get_super_class(line), base, params;
 	if(cRecDecl->getNumBases()>1)
@@ -282,15 +279,13 @@ string find_name_of_machine(const CXXRecordDecl *cRecDecl, string line) // find 
 	{ 
 		if(test_model(super_class,"state_machine"))
 		{
-			//std::cout<<super_class;
 			params = get_params(super_class);
-			//std::cout<<params;
 		}
 	}
 	return params;
 }
 
-string find_transitions (const string name_of_state, string line) // traverse all methods for finding declarations of transitions
+string find_transitions (const string name_of_state, string line) /** Traverse all methods for finding declarations of transitions. */
 {	
 	string dest, params, base, trans;
 	int num = count(line,'<');	
@@ -338,7 +333,7 @@ string find_transitions (const string name_of_state, string line) // traverse al
 	else return trans;	
 }
 
-bool find_events(const CXXRecordDecl *cRecDecl, string line) // test if the decl is decl of event
+bool find_events(const CXXRecordDecl *cRecDecl, string line) /** This function provides testing if the decl is decl of event*/
 {	
 	string super_class = get_super_class(line), base, params;
 	if(cRecDecl->getNumBases()>1)
