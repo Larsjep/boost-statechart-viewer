@@ -103,7 +103,7 @@ class IO_operations
 		this->outputFilename = outputFilename;
 	}
 	
-	void write_states(ofstream& filestr) /** This method write states to the output file and also to transition table. */
+	bool write_states(ofstream& filestr) /** This method write states to the output file and also to transition table. */
 	{
 		int pos1, pos2, cnt, subs;
 		nState = 1;
@@ -157,6 +157,8 @@ class IO_operations
 			filestr<<"subgraph cluster"<<subs<<" {\n";			
 			pos1 = state.find(",");
 			pos2 = state.rfind(",");
+			if(pos1 == pos2) return false;
+						
 			context = cut_namespaces(state.substr(0,pos1));
 			filestr<<"label=\""<<context<<"\";\n";
 			sState = cut_namespaces(state.substr(pos2+1));
@@ -201,7 +203,7 @@ class IO_operations
 			filestr<<"}\n";
 			subs+=1;	
 		}
-		return;
+		return true;
 	}
 
 	void write_transitions(ofstream& filestr) /** Write transitions to the output file nad the transition table. */
@@ -244,7 +246,13 @@ class IO_operations
 			rows = states.size()+1;
 			table = new string [cols*rows];
 			fill_table_with_events();			
-			write_states(filestr);
+			if(!write_states(filestr)) 
+			{
+				cerr<<"Error during writing states.\n";
+				filestr<<"}";		
+				filestr.close();
+				return;			
+			}
 			write_transitions(filestr);
 			filestr<<"}";		
 			filestr.close();
