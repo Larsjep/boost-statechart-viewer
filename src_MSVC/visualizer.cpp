@@ -22,24 +22,24 @@
 #include <iostream>
 
 //LLVM Header files
-#include "llvm/Support/raw_ostream.h"
-#include "llvm/Support/Host.h"
-#include "llvm/Config/config.h"
+#include "llvm\Support\raw_ostream.h"
+#include "llvm\Support\Host.h"
+#include "llvm\Config\config.h"
 
 //clang header files
-#include "clang/Frontend/TextDiagnosticPrinter.h"
-#include "clang/Lex/HeaderSearch.h"
-#include "clang/Basic/FileManager.h"
-#include "clang/Frontend/Utils.h"
-#include "clang/Basic/TargetInfo.h"
-#include "clang/Lex/Preprocessor.h"
-#include "clang/Frontend/CompilerInstance.h"
-#include "clang/AST/ASTConsumer.h"
-#include "clang/Sema/Lookup.h"
-#include "clang/Parse/ParseAST.h"
-#include "clang/Basic/Version.h"
-#include "clang/Driver/Driver.h"
-#include "clang/Driver/Compilation.h"
+#include "clang\Frontend\TextDiagnosticPrinter.h"
+#include "clang\Lex\HeaderSearch.h"
+#include "clang\Basic\FileManager.h"
+#include "clang\Frontend\Utils.h"
+#include "clang\Basic\TargetInfo.h"
+#include "clang\Lex\Preprocessor.h"
+#include "clang\Frontend\CompilerInstance.h"
+#include "clang\AST\ASTConsumer.h"
+#include "clang\Sema\Lookup.h"
+#include "clang\Parse\ParseAST.h"
+#include "clang\Basic\Version.h"
+#include "clang\Driver\Driver.h"
+#include "clang\Driver\Compilation.h"
 
 //my own header files
 #include "iooper.h"
@@ -428,7 +428,7 @@ int main(int argc, char **argv)
 	Driver TheDriver(LLVM_BINDIR, llvm::sys::getHostTriple(), "", false, false, diag);
 	TheDriver.setCheckInputsExist(true);
 	TheDriver.CCCIsCXX = 1;	
-	TheDriver.ResourceDir = LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
+	TheDriver.ResourceDir = LLVM_PREFIX "\lib\clang\\" CLANG_VERSION_STRING;
 
 	CompilerInvocation compInv;
 	llvm::SmallVector<const char *, 16> Args(argv, argv + argc);

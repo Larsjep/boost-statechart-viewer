@@ -18,8 +18,8 @@ struct state_1; // definice stavu
 struct state_2; // definice stavu
 struct state_3; // definice stavu
 struct state_4; // definice stavu
-struct EvA : sc::event< EvA > {};//stisteno A
-struct EvN : sc::event< EvN > {};//stisteno N
+struct EvYes : sc::event< EvYes > {};//stisteno A
+struct EvNo : sc::event< EvNo > {};//stisteno N
 struct EvTimer : sc::event< EvTimer > {};//vyprsel cas
 
 struct DU : sc::state_machine< DU, state_1 > {};//Nastaveni inicializacniho stavu
@@ -39,8 +39,8 @@ struct state_1 : sc::simple_state< state_1, DU> // stav
     state_1() { cout<<"Chcete zformatovat vas disk (a/n) ? \n";}//FSM_Entry
     ~state_1() {}//FSM_Exit
     typedef mpl::list< // reakce na udalosti
-        sc::transition< EvA, state_4 >,
-        sc::transition< EvN, state_2 > > reactions;
+        sc::transition< EvYes, state_4 >,
+        sc::transition< EvNo, state_2 > > reactions;
 };
 struct state_2 : sc::simple_state< state_2, DU >
 {
@@ -81,7 +81,7 @@ struct state_3 : sc::simple_state< state_3, DU >
     }
     ~state_3() {}
     typedef mpl::list<
-        sc::transition< EvN, state_1 >,
+        sc::transition< EvNo, state_1 >,
         sc::transition< EvTimer, state_4 > > reactions;
 };
 struct state_4 : sc::simple_state< state_4, DU >
@@ -111,8 +111,8 @@ void *nacitani (void * ptr)
     while(1)
     {
          cin >> s;
-        if (s == "n") Zm.process_event (EvN());
-        if (s == "a") Zm.process_event (EvA());
+        if (s == "n") Zm.process_event (EvNo());
+        if (s == "a") Zm.process_event (EvYes());
         if (s == "exit") break;
     }
     return NULL;
