@@ -428,7 +428,7 @@ int main(int argc, char **argv)
 	Driver TheDriver(LLVM_BINDIR, llvm::sys::getHostTriple(), "", false, false, diag);
 	TheDriver.setCheckInputsExist(true);
 	TheDriver.CCCIsCXX = 1;	
-	TheDriver.ResourceDir = LLVM_PREFIX "\lib\clang\\" CLANG_VERSION_STRING;
+	TheDriver.ResourceDir = LLVM_PREFIX "\\lib\\clang\\" CLANG_VERSION_STRING;
 
 	CompilerInvocation compInv;
 	llvm::SmallVector<const char *, 16> Args(argv, argv + argc);
