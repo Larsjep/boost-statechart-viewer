@@ -414,6 +414,13 @@ class FindStates : public ASTConsumer
   */
 int main(int argc, char **argv)
 { 
+	if(argc==1 || strncmp(argv[1],"-help",5)==0)
+	{
+		cout<<endl<<" Boost Statechart Viewer - help"<<endl;
+		cout<<"================================"<<endl;
+		cout<<"The program can be used almost the same way as a C compiler. You will typically need to specify locations for all header files except of the files stored in system folder(in Linux: /usr/...) using -I option. Of course you can specify the output filename (-o option). Program displays all diagnostic messages like compilers. If an error occurs the program stops."<<endl<<endl;
+		return 0;
+	}
 	string inputFilename = "";
 	string outputFilename = "graph.dot"; // initialize output Filename
 	DiagnosticOptions dopts;
