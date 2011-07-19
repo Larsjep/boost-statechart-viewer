@@ -72,7 +72,7 @@ class IO_operations
 
 	~IO_operations() /** destructor. It deallocates the transition table.*/
 	{
-		delete table;
+		delete [] table;
 	}
 	
 	void setEvents(list<string> events) /** Set list of events to an attribute */
@@ -123,7 +123,7 @@ class IO_operations
 			{
 				pos1 = state.find(",");
 				ctx = cut_namespaces(state.substr(pos1+1));
-				if(ctx.compare(0,context.length(),context)==0)
+				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 				{
 					str = cut_namespaces(state.substr(0,pos1));
 					filestr<<str<<";\n";
@@ -140,7 +140,7 @@ class IO_operations
 				pos1 = state.find(",");
 				pos2 = state.rfind(",");
 				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-				if(ctx.compare(0,context.length(),context)==0)
+				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 				{				
 					str = cut_namespaces(state.substr(0,pos1));
 					filestr<<str<<";\n";
@@ -174,7 +174,7 @@ class IO_operations
 				{
 					pos1 = state.find(",");
 					ctx = cut_namespaces(state.substr(pos1+1));
-					if(ctx.compare(0,context.length(),context)==0)
+					if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 					{
 						str = cut_namespaces(state.substr(0,pos1));
 						filestr<<str<<";\n";
@@ -191,7 +191,7 @@ class IO_operations
 					pos1 = state.find(",");
 					pos2 = state.rfind(",");
 					ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-					if(ctx.compare(0,context.length(),context)==0) 
+					if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 					{
 						str = cut_namespaces(state.substr(0,pos1));
 						filestr<<str<<";\n";
@@ -295,7 +295,7 @@ class IO_operations
 			cout<<"\n";
 			cout<<line<<"\n";
 		}
-		delete len;
+		delete [] len;
 	}
 
 	void print_stats() /** Print short statistics about the state machine */
