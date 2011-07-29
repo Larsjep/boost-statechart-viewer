@@ -126,13 +126,17 @@ class IO_operations
 				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 				{
 					str = cut_namespaces(state.substr(0,pos1));
-					filestr<<str<<";\n";
+					if(str.compare(0,name_of_first_state.length(),name_of_first_state)==0 && name_of_first_state.length()==str.length()) 
+					{
+						filestr<<str<<" [peripheries=2];\n";
+						table[cols*nState] = "*";
+					}					
+					else filestr<<str<<"\n";
 					table[cols*nState+2] = str;
 					table[cols*nState+1] = context;
 					nState+=1;
 					nstates.erase(i);
 					i--;
-					if(str.compare(0,str.length(),name_of_first_state)==0) table[cols*(nState-1)] = "*";
 				}
 			}
 			if(cnt==2)
@@ -143,15 +147,18 @@ class IO_operations
 				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 				{				
 					str = cut_namespaces(state.substr(0,pos1));
-					filestr<<str<<";\n";
+					if(str.compare(0,name_of_first_state.length(),name_of_first_state)==0 && name_of_first_state.length()==str.length()) 
+					{
+						filestr<<str<<" [peripheries=2];\n";
+						table[cols*nState] = "*";
+					}
+					else filestr<<str<<"\n";
 					table[cols*nState+2] = str;
 					table[cols*nState+1] = context;			
-					nState+=1;
-					if(str.compare(0,str.length(),name_of_first_state)==0) table[cols*(nState-1)] = "*";
+					nState+=1;					
 				}
 			}
 		}
-		filestr<<name_of_first_state<<" [peripheries=2] ;\n";
 		subs = 0;
 		while(!nstates.empty()) // substates ?
 		{
@@ -160,11 +167,9 @@ class IO_operations
 			pos1 = state.find(",");
 			pos2 = state.rfind(",");
 			if(pos1 == pos2) return false;
-						
 			context = cut_namespaces(state.substr(0,pos1));
 			filestr<<"label=\""<<context<<"\";\n";
 			sState = cut_namespaces(state.substr(pos2+1));
-			filestr<<sState<<" [peripheries=2] ;\n";	
 			nstates.pop_front();	
 			for(list<string>::iterator i = nstates.begin();i!=nstates.end();i++)
 			{
@@ -177,13 +182,17 @@ class IO_operations
 					if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 					{
 						str = cut_namespaces(state.substr(0,pos1));
-						filestr<<str<<";\n";
+						if(str.compare(0,sState.length(),sState)==0 && sState.length()==str.length())
+						{
+							filestr<<str<<" [peripheries=2];\n";
+							table[cols*nState]="*";
+						}
+						else filestr<<str<<"\n";
 						table[cols*nState+2] = str;
 						table[cols*nState+1] = context;
 						nState+=1;
 						nstates.erase(i);
 						i--;
-						if(str.compare(0,str.length(),sState)==0) table[cols*(nState-1)] = "*";
 					}
 				}
 				if(cnt==2)
@@ -194,11 +203,15 @@ class IO_operations
 					if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 					{
 						str = cut_namespaces(state.substr(0,pos1));
-						filestr<<str<<";\n";
+						if(str.compare(0,sState.length(),sState)==0 && sState.length()==str.length())
+						{
+							filestr<<str<<" [peripheries=2];\n";
+							table[cols*nState]="*";
+						}						
+						else filestr<<str<<"\n";
 						table[cols*nState+2] = str;
 						table[cols*nState+1] = context;
 						nState+=1;
-						if(str.compare(0,str.length(),sState)==0) table[cols*(nState-1)] = "*";
 					}
 				}
 			}
@@ -215,15 +228,18 @@ class IO_operations
 		for(list<string>::iterator i = transitions.begin();i!=transitions.end();i++) // write all transitions
 		{
 			params = *i;
-			pos1 = params.find(",");
-			state = cut_namespaces(params.substr(0,pos1));
-			filestr<<state<<"->";
-			pos2 = params.rfind(",");
-			dest = cut_namespaces(params.substr(pos2+1));
-			filestr<<dest;
-			event = cut_namespaces(params.substr(pos1+1,pos2-pos1-1));
-			filestr<<"[label=\""<<event<<"\"];\n";
-			table[find_place(state,2)*cols+find_place(event,1)]=dest;
+			if(count(params,',')==2)
+			{			
+				pos1 = params.find(",");
+				state = cut_namespaces(params.substr(0,pos1));
+				filestr<<state<<"->";
+				pos2 = params.rfind(",");
+				dest = cut_namespaces(params.substr(pos2+1));
+				filestr<<dest;
+				event = cut_namespaces(params.substr(pos1+1,pos2-pos1-1));
+				filestr<<"[label=\""<<event<<"\"];\n";
+				table[find_place(state,2)*cols+find_place(event,1)]=dest;
+			}
 		}		
 		return;
 	}
@@ -258,6 +274,7 @@ class IO_operations
 			write_transitions(filestr);
 			filestr<<"}";		
 			filestr.close();
+			// call write_reactions();
 			print_table();
 		}
 		else cout<<"No state machine was found. So no output file was created.\n";
