@@ -72,15 +72,26 @@ string get_return(const string code) /** Return return statement. */
 
 string cut_namespaces(string line) /** Cut namespaces from the declarations. */
 {
-	int i = line.rfind("::");
-	if(i==-1) return line;
-	return line.substr(i+2);
+	int i;
+	int brackets = 0;
+	for(i = line.length()-1;i>0;i--)
+	{
+		if(line[i]=='<') brackets+=1;
+		if(line[i]=='>') brackets-=1;
+		if(line[i]==':' && line[i-1]==':')
+		{
+			if(brackets == 0) break;
+			else i--;
+		}
+	}
+	if(i==0) return line;
+	return line.substr(i+1);
 }
 
 bool is_derived(const string line) /** Test whether this struct or class is derived */
 {
 	unsigned i;
-	for(i = 0;i<line.length()-1;i++)
+	for(i = 0;i<line.length()-2;i++)
 	{
 		if(line[i]==':')
 		{
@@ -133,6 +144,7 @@ string get_first_base(const string line) /** Get the first super class of this d
 
 bool is_state(const string line) /** Test if this declaration is a state. It is used to test the base classes. */
 {
+	cout<<cut_namespaces(line)<<endl;
 	if(cut_namespaces(line).compare(0,12,"simple_state")==0)
 	{
 		return true;	
@@ -228,9 +240,10 @@ string get_params(string line) /** Return parameters of the specified transition
 	
 string find_states(const CXXRecordDecl *cRecDecl, string line) /** test if the struct/class is he state (must be derived from simple_state or state). */
 {	
-	string super_class = get_super_class(line), base, params;		
+	string super_class = get_super_class(line), base, params;
 	if(cRecDecl->getNumBases()>1)
 	{
+		
 		for(unsigned i = 0; i<cRecDecl->getNumBases();i++ )
 		{
 			if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
@@ -246,9 +259,9 @@ string find_states(const CXXRecordDecl *cRecDecl, string line) /** test if the s
 		}
 	}
 	else
-	{ 
+	{ 		
 		if(is_state(super_class)) 
-		{
+		{			
 			params = get_params(super_class);
 		}
 		else params = "";

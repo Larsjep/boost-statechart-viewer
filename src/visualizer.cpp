@@ -242,6 +242,7 @@ class FindStates : public ASTConsumer
 		llvm::raw_string_ostream x(output);
 		decl->print(x);
 		line = get_line_of_code(x.str());
+		
 		output = "";
 		int pos;
 		const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
