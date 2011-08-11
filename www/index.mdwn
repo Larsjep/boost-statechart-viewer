@@ -31,7 +31,7 @@ NEWS
 Status
 -------
 
-- The program can found states and transitions in the source code. Now it supports also orthogonal states.
+- The program can found states and transitions in the source code. Now it also supports orthogonal states.
 - The program understands all options and flags as the compilers (gcc, clang, ...).
 - State machines can be defined in more than one file.
 - The state machine can be inside many namespaces, but not inside templates. 
