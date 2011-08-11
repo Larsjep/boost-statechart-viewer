@@ -24,14 +24,16 @@ For compiling
 and correctly working program is necessary to have LLVM and clang
 version 2.9.
 
+NEWS
+-----
+2011-08-11 Added support for orthogonal states.
 
 Status
 -------
 
-- The program can found states and transitions in the source code.
+- The program can found states and transitions in the source code. Now it supports also orthogonal states.
 - The program understands all options and flags as the compilers (gcc, clang, ...).
 - State machines can be defined in more than one file.
-- Now it doesn't support orthogonal states.
 - The state machine can be inside many namespaces, but not inside templates. 
 
 Usage
