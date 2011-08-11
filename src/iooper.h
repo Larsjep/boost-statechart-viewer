@@ -104,33 +104,62 @@ class IO_operations
 	{
 		this->outputFilename = outputFilename;
 	}
+
+	bool test_start(const string *sState, const string state, const int num)
+	{
+		for(int i = 0; i<num;i++)
+		{
+			if (state.compare(0,sState[i].length(), sState[i])==0 && sState[i].length()==state.length()) return true;
+		}
+		return false;
+	}
 	
 	bool write_states(ofstream& filestr) /** This method write states to the output file and also to transition table. */
 	{
-		int pos1, pos2, cnt, subs;
+		int pos1, pos2, cnt, subs, num_start, orto = 0;
 		nState = 1;
-		string context, state, ctx, sState, str;
+		string context, state, ctx, *sState, str;
 		list<string> nstates = states;
 		context = name_of_machine;
 		table[0] = "S";
 		table[1] = "Context";
 		table[2] = "State";
+		cnt = count(name_of_first_state,',');
+		sState = new string [cnt+1];
+		str = name_of_first_state;
+		if(cnt>0) str = get_params(str);
+		num_start = cnt+1;
+		for(int i = 0;i<=cnt;i++)
+		{
+			if(i == cnt) sState[i] = str;
+			else 
+			{
+				sState[i] = str.substr(0,str.find(','));
+				str = str.substr(str.find(',')+1);
+			}
+		}		
 		for(list<string>::iterator i = nstates.begin();i!=nstates.end();i++) // write all states in the context of the automaton
 		{
 			state = *i;
 			cnt = count(state,',');
-			if(cnt==1)
+			if(count(state,'>')==1) //ortho states
+			{
+				orto = 1;
+				if(cnt>1)cnt = 2;
+			}
+			if(cnt==1) 
 			{
 				pos1 = state.find(",");
-				ctx = cut_namespaces(state.substr(pos1+1));
+				if(orto == 1) ctx = cut_namespaces(cut_namespaces(state.substr(pos1+1),1)); 				
+				else ctx = cut_namespaces(state.substr(pos1+1));			
 				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 				{
 					str = cut_namespaces(state.substr(0,pos1));
-					if(str.compare(0,name_of_first_state.length(),name_of_first_state)==0 && name_of_first_state.length()==str.length()) 
+					if(test_start(sState,str,num_start)) 
 					{
 						filestr<<str<<" [peripheries=2];\n";
 						table[cols*nState] = "*";
-					}					
+					}			
 					else filestr<<str<<"\n";
 					table[cols*nState+2] = str;
 					table[cols*nState+1] = context;
@@ -139,15 +168,16 @@ class IO_operations
 					i--;
 				}
 			}
-			if(cnt==2)
+			if(cnt==2) //ORTHO OK
 			{
 				pos1 = state.find(",");
-				pos2 = state.rfind(",");
+				pos2 = state.substr(pos1+1).find(",")+pos1+1;
 				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
+				cout<<ctx<<endl;			
 				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 				{				
 					str = cut_namespaces(state.substr(0,pos1));
-					if(str.compare(0,name_of_first_state.length(),name_of_first_state)==0 && name_of_first_state.length()==str.length()) 
+					if(test_start(sState,str,num_start)) 
 					{
 						filestr<<str<<" [peripheries=2];\n";
 						table[cols*nState] = "*";
@@ -159,30 +189,50 @@ class IO_operations
 				}
 			}
 		}
+		delete [] sState;
 		subs = 0;
 		while(!nstates.empty()) // substates ?
 		{
 			state = nstates.front();
 			filestr<<"subgraph cluster"<<subs<<" {\n";			
 			pos1 = state.find(",");
-			pos2 = state.rfind(",");
+			pos2 = state.substr(pos1+1).find(",")+pos1+1;
 			if(pos1 == pos2) return false;
 			context = cut_namespaces(state.substr(0,pos1));
 			filestr<<"label=\""<<context<<"\";\n";
-			sState = cut_namespaces(state.substr(pos2+1));
-			nstates.pop_front();	
+			cnt = count(state.substr(pos2+1),',');
+			sState = new string [cnt+1];
+			str = state.substr(pos2+1);
+			if(cnt>0) str = get_params(str);
+			num_start = cnt+1;
+			for(int i = 0;i<=cnt;i++)
+			{
+				if(i == cnt) sState[i] = str;
+				else 
+				{
+					sState[i] = str.substr(0,str.find(','));
+					str = str.substr(str.find(',')+1);
+				}
+			}	
+			nstates.pop_front();
 			for(list<string>::iterator i = nstates.begin();i!=nstates.end();i++)
 			{
 				state = *i;
 				cnt = count(state,',');
+				if(count(state,'>')==1) //ortho states
+				{
+					orto = 1;
+					if(cnt>1)cnt = 2;
+				}				
 				if(cnt==1)
 				{
 					pos1 = state.find(",");
-					ctx = cut_namespaces(state.substr(pos1+1));
+					if(orto == 1) ctx = cut_namespaces(cut_namespaces(state.substr(pos1+1),1)); 				
+					else ctx = cut_namespaces(state.substr(pos1+1));
 					if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 					{
 						str = cut_namespaces(state.substr(0,pos1));
-						if(str.compare(0,sState.length(),sState)==0 && sState.length()==str.length())
+						if(test_start(sState,str,num_start))
 						{
 							filestr<<str<<" [peripheries=2];\n";
 							table[cols*nState]="*";
@@ -203,11 +253,11 @@ class IO_operations
 					if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 					{
 						str = cut_namespaces(state.substr(0,pos1));
-						if(str.compare(0,sState.length(),sState)==0 && sState.length()==str.length())
+						if(test_start(sState,str,num_start))
 						{
 							filestr<<str<<" [peripheries=2];\n";
 							table[cols*nState]="*";
-						}						
+						}					
 						else filestr<<str<<"\n";
 						table[cols*nState+2] = str;
 						table[cols*nState+1] = context;
@@ -216,7 +266,8 @@ class IO_operations
 				}
 			}
 			filestr<<"}\n";
-			subs+=1;	
+			subs+=1;
+			delete [] sState;	
 		}
 		return true;
 	}
