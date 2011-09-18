@@ -172,8 +172,7 @@ class IO_operations
 			{
 				pos1 = state.find(",");
 				pos2 = state.substr(pos1+1).find(",")+pos1+1;
-				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
-				cout<<ctx<<endl;			
+				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));	
 				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 				{				
 					str = cut_namespaces(state.substr(0,pos1));
@@ -282,14 +281,25 @@ class IO_operations
 			if(count(params,',')==2)
 			{			
 				pos1 = params.find(",");
-				state = cut_namespaces(params.substr(0,pos1));
-				filestr<<state<<"->";
-				pos2 = params.rfind(",");
-				dest = cut_namespaces(params.substr(pos2+1));
-				filestr<<dest;
-				event = cut_namespaces(params.substr(pos1+1,pos2-pos1-1));
-				filestr<<"[label=\""<<event<<"\"];\n";
-				table[find_place(state,2)*cols+find_place(event,1)]=dest;
+				if(pos1==0) 
+				{
+					dest = "(deferred)";
+					pos2 = params.rfind(",");
+					event = cut_namespaces(params.substr(pos2+1));
+					state = cut_namespaces(params.substr(1,pos2-1));
+				}
+				else
+				{
+					state = cut_namespaces(params.substr(0,pos1));
+					filestr<<state<<"->";
+					pos2 = params.rfind(",");
+					dest = cut_namespaces(params.substr(pos2+1));
+					filestr<<dest;
+					event = cut_namespaces(params.substr(pos1+1,pos2-pos1-1));
+					filestr<<"[label=\""<<event<<"\"];\n";
+				}
+				dest.append(",");
+				table[find_place(state,2)*cols+find_place(event,1)]+=dest;
 			}
 		}		
 		return;
@@ -337,13 +347,24 @@ class IO_operations
 		cout<<"\nTRANSITION TABLE\n";
 		unsigned * len = new unsigned[cols];
 		len[0] = 1;
-		string line = "-|---|-";
+		int nbr, multiline;
+		string line = "-|---|-", str;
 		for(int i = 1; i<cols; i++)
 		{
 			len[i] = 0;
 			for(int j = 0;j<rows;j++)
 			{
-				if(len[i]<table[j*cols+i].length()) len[i] = table[j*cols+i].length();
+				nbr = count(table[j*cols+i],',');
+				if(nbr>1)
+				{
+					str = table[j*cols+i];
+					for(int k = 1; k<nbr;k++)
+					{
+						if(len[i]<str.find(",")) len[i] = str.find(",");
+						str.substr(str.find(",")+1);
+					}
+				}
+				else if(len[i]<table[j*cols+i].length()) len[i] = table[j*cols+i].length();
 			}
 			for(unsigned k = 0; k<len[i]; k++)
 			{
@@ -354,14 +375,33 @@ class IO_operations
 		cout<<line<<"\n";
 		for(int i = 0; i<rows; i++)
 		{
-			cout<<" | ";		
+			cout<<" | ";
+			multiline = 0;
 			for(int j = 0;j<cols;j++)
 			{
 				cout.width(len[j]);
-				cout<<left<<table[i*cols+j]<<" | ";
+				str = table[i*cols+j];
+				nbr = count(str,',');
+				if(nbr>0)
+				{				
+					cout<<left<<str.substr(0,str.find(","))<<" | ";
+					if(nbr>1) 
+					{
+						table[i*cols+j] = str.substr(str.find(",")+1);
+						multiline = 1;
+					}
+					else table[i*cols+j]="";
+						
+				}
+				else 
+				{
+					cout<<left<<str<<" | ";
+					table [i*cols+j]="";
+				}
 			}
 			cout<<"\n";
-			cout<<line<<"\n";
+			if(multiline == 0)	cout<<line<<"\n";
+			else i--;
 		}
 		delete [] len;
 	}

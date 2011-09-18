@@ -162,7 +162,6 @@ string get_first_base(const string line) /** Get the first super class of this d
 
 bool is_state(const string line) /** Test if this declaration is a state. It is used to test the base classes. */
 {
-	cout<<cut_namespaces(line)<<endl;
 	if(cut_namespaces(line).compare(0,12,"simple_state")==0)
 	{
 		return true;	
@@ -237,15 +236,27 @@ string get_inner_part(const string line) /** Get inner part of the list. */
 	return str.substr(0,i);
 }
 
-bool test_model(const string line, const string model) /** Test the string to has a specified model. */
+int get_model(const string line) /** Test the string to has a specified model. */
 {
-	if(cut_namespaces(line).compare(0,model.length(),model)==0)
+	string str = cut_namespaces(line);
+	if(str.find("<")<str.length()) str = str.substr(0,str.find("<"));
+	switch(str.length())
 	{
-		return true;	
-	}
-	else
-	{
-		return false;
+		case 5 : if(str.compare(0,5,"event")==0) return 1;
+					break;
+		case 6 : if(str.compare(0,6,"result")==0) return 5;
+					break;
+		case 7 :	if(str.compare(0,7,"transit")==0) return 6;
+					break;
+		case 8 :	if(str.compare(0,8,"deferral")==0) return 13;
+					break;		
+		case 10 : if(str.compare(0,10,"transition")==0) return 11;
+					 break;
+		case 13 : if(str.compare(0,13,"state_machine")==0) return 3;
+					 break;
+		case 15 : if(str.compare(0,15,"custom_reaction")==0) return 12;
+					 break;
+		default : return -1;
 	}
 }
 
@@ -296,7 +307,7 @@ string find_name_of_machine(const CXXRecordDecl *cRecDecl, string line) /** Find
 		{
 			if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
 			else base = super_class;
-			if(test_model(base,"state_machine"))
+			if(get_model(base)==3)
 			{
 				params = get_params(base);
 			}
@@ -308,7 +319,7 @@ string find_name_of_machine(const CXXRecordDecl *cRecDecl, string line) /** Find
 	}
 	else
 	{ 
-		if(test_model(super_class,"state_machine"))
+		if(get_model(super_class)==3)
 		{
 			params = get_params(super_class);
 		}
@@ -332,33 +343,18 @@ string find_transitions (const string name_of_state, string line) /** Traverse a
 	{
 		if(j!=num-1) base = get_first_base(line);			
 		else base = line;
-		if(test_model(base,"transition"))
+		if(get_model(base)>10)
 		{
-			dest = name_of_state;
-			params = get_params(base);
-			//cout<<params<<"\n";
-			dest.append(",");							
-			dest.append(params);
-			line = get_next_base(line);
-			trans.append(dest);
-			if(j+1!=num) trans.append(";");
-		}
-		else if(test_model(base,"custom_reaction"))
-		{
-			dest = ";";
+			if(get_model(base)==12) dest = ";";
+			else if (get_model(base) == 13) dest = ",";
 			dest.append(name_of_state);
 			params = get_params(base);
-			//cout<<params<<"\n";
 			dest.append(",");							
 			dest.append(params);
-			line = get_next_base(line);
 			trans.append(dest);
 			if(j+1!=num) trans.append(";");
 		}
-		else
-		{
-			line = get_next_base(line);
-		}
+		line = get_next_base(line);
 	}
 	if(trans[trans.length()-1]==';') return trans.substr(0,trans.length()-1);
 	else return trans;	
@@ -373,7 +369,7 @@ bool find_events(const CXXRecordDecl *cRecDecl, string line) /** This function p
 		{
 			if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
 			else base = super_class;
-			if(test_model(base,"event")) return true;
+			if(get_model(base)==1) return true;
 			else
 			{
 				super_class = get_next_base(super_class);
@@ -382,7 +378,7 @@ bool find_events(const CXXRecordDecl *cRecDecl, string line) /** This function p
 	}
 	else
 	{ 
-		if(test_model(super_class,"event"))return true;
+		if(get_model(super_class)==1)return true;
 	}
 	return false;
 }

@@ -335,11 +335,11 @@ class FindStates : public ASTConsumer
 		{
 			decl->print(x);
 			line = get_return(x.str());
-			if(test_model(line,"result"))
+			if(get_model(line)==5)
 			{
 				const FunctionDecl *fDecl = dyn_cast<FunctionDecl>(decl);
 				const ParmVarDecl *pvd = fDecl->getParamDecl(0);
-                                QualType qt = pvd->getOriginalType();
+				QualType qt = pvd->getOriginalType();
 				event = qt.getAsString();
 				if(event[event.length()-1]=='&') event = event.substr(0,event.length()-2);
 				event = event.substr(event.rfind(" ")+1);
@@ -393,7 +393,7 @@ class FindStates : public ASTConsumer
 			case 98 :	line = sman.getCharacterData(dyn_cast<ReturnStmt>(stmt)->getReturnLoc()); 
 							line = get_line_of_code(line).substr(6);
 							line = line.substr(0,line.find("("));
-							if(test_model(line,"transit"))
+							if(get_model(line)==6)
 							{
 								param = get_params(line);
 								transitions.push_back(event.append(",").append(param));
