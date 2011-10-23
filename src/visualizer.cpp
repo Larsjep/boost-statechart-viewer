@@ -127,7 +127,7 @@ class FindStates : public ASTConsumer
 	FullSourceLoc *fsloc; /** Full Source Location instance for holding Source Manager. */
 	public:
 
-	list<string> getStates() /** Return list of states. */
+	list<string> getStates() /** Return list of states of the state machine. */
 	{
 		return states;
 	}
@@ -397,6 +397,11 @@ class FindStates : public ASTConsumer
 							{
 								param = get_params(line);
 								transitions.push_back(event.append(",").append(param));
+							}
+							if(get_model(line) == 7)
+							{
+								param = ",";
+								transitions.push_back(param.append(event));
 							}
 							break;
 			case 99 :  	find_return_stmt(stmt, event);
