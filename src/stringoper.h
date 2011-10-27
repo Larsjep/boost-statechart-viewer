@@ -349,12 +349,13 @@ string find_transitions (const string name_of_state, string line) /** Traverse a
 		{
 			if(get_model(base)==12) dest = ";";
 			else if (get_model(base) == 13) dest = ",";
+			else dest = "";
 			dest.append(name_of_state);
 			params = get_params(base);
 			dest.append(",");							
 			dest.append(params);
-			trans.append(dest);
-			if(j+1!=num) trans.append(";");
+			trans.append(dest);		
+			if(j!=num-1) trans.append(";");
 		}
 		line = get_next_base(line);
 	}
