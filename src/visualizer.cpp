@@ -288,11 +288,12 @@ class FindStates : public ASTConsumer
 		const TagDecl *tagDecl = dyn_cast<TagDecl>(decl);
 		const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);			
 		output="";
+		std::cout<<state<<std::endl;
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
 		{
+			i->print(x);
 			if (i->getKind()==26) // typedefs
 			{
-				i->print(x);
 				output = x.str();
 				line = clean_spaces(cut_type(output));		
 				ret = find_transitions(state,line);
@@ -320,8 +321,9 @@ class FindStates : public ASTConsumer
 					output="";
 				}
 			}
-			if(i->getKind()==35) method_decl(decl);// C++ method
+			if(i->getKind()==35) method_decl(*i);// C++ method
 		}
+		
 	}
 
  /**
@@ -331,12 +333,14 @@ class FindStates : public ASTConsumer
 	{
 		string output, line, event;	
 		llvm::raw_string_ostream x(output);
+
 		if(decl->hasBody())
 		{
 			decl->print(x);
-			line = get_return(x.str());
+			line = get_return(x.str());			
 			if(get_model(line)==5)
 			{
+				//std::cout<<"metodass"<<std::endl;
 				const FunctionDecl *fDecl = dyn_cast<FunctionDecl>(decl);
 				const ParmVarDecl *pvd = fDecl->getParamDecl(0);
 				QualType qt = pvd->getOriginalType();
