@@ -260,6 +260,7 @@ int get_model(const string line) /** Test the string to has a specified model. *
 					 break;
 		default : return -1;
 	}
+	return -1;
 }
 
 string get_params(string line) /** Return parameters of the specified transition */

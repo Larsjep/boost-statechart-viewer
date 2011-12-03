@@ -288,12 +288,12 @@ class FindStates : public ASTConsumer
 		const TagDecl *tagDecl = dyn_cast<TagDecl>(decl);
 		const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);			
 		output="";
-		std::cout<<state<<std::endl;
+		std::cout<<"Found state: "<<state<<std::endl;
 		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
 		{
-			i->print(x);
 			if (i->getKind()==26) // typedefs
 			{
+				i->print(x);
 				output = x.str();
 				line = clean_spaces(cut_type(output));		
 				ret = find_transitions(state,line);
@@ -481,7 +481,7 @@ int main(int argc, char **argv)
 	inputFilename = f.Inputs[0].second;
 
 	cout<<"Input filename: "<<inputFilename<<"\n"; // print Input filename
-	cout<<"Output filename: "<<outputFilename<<"\n"; // print Output filename
+	cout<<"Output filename: "<<outputFilename<<"\n\n\n"; // print Output filename
 
 
 	Preprocessor pp(diag, lang, *ti, sm, *headers);
