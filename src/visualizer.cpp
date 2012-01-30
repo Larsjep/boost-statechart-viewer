@@ -385,35 +385,35 @@ class FindStates : public ASTConsumer
 		type = stmt->getStmtClass();
 		switch(type)
 		{	
-			case 8 :		find_return_stmt(dyn_cast<DoStmt>(stmt)->getBody(), event); // do
-							break;
+			case 8 :	find_return_stmt(dyn_cast<DoStmt>(stmt)->getBody(), event); // do
+						break;
 			case 86 :	find_return_stmt(dyn_cast<ForStmt>(stmt)->getBody(), event); // for
-							break;
-			case 88 :   find_return_stmt(dyn_cast<IfStmt>(stmt)->getThen(), event); //if then
-							find_return_stmt(dyn_cast<IfStmt>(stmt)->getElse(), event); //if else
-							break;
+						break;
+			case 88 :	find_return_stmt(dyn_cast<IfStmt>(stmt)->getThen(), event); //if then
+						find_return_stmt(dyn_cast<IfStmt>(stmt)->getElse(), event); //if else
+						break;
 			case 90 :	find_return_stmt(dyn_cast<LabelStmt>(stmt)->getSubStmt(), event); //label
-							break;
+						break;
 			case 98 :	line = sman.getCharacterData(dyn_cast<ReturnStmt>(stmt)->getReturnLoc()); 
-							line = get_line_of_code(line).substr(6);
-							line = line.substr(0,line.find("("));
-							if(get_model(line)==6)
-							{
-								param = get_params(line);
-								transitions.push_back(event.append(",").append(param));
-							}
-							if(get_model(line) == 7)
-							{
-								param = ",";
-								transitions.push_back(param.append(event));
-							}
-							break;
+						line = get_line_of_code(line).substr(6);
+						line = line.substr(0,line.find("("));
+						if(get_model(line)==6)
+						{
+							param = get_params(line);
+							transitions.push_back(event.append(",").append(param));
+						}
+						if(get_model(line) == 7)
+						{
+							param = ",";
+							transitions.push_back(param.append(event));
+						}
+						break;
 			case 99 :  	find_return_stmt(stmt, event);
-							break;
+						break;
 			case 101 : 	find_return_stmt(dyn_cast<SwitchStmt>(stmt)->getBody(), event); // switch
-							break;
+						break;
 			case 102 : 	find_return_stmt(dyn_cast<WhileStmt>(stmt)->getBody(), event); // while
-							break;
+						break;
 		}
 	}
 
