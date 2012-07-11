@@ -3,30 +3,29 @@
 Overview
 ---------
 
-Boost-statechart-viewer is a program for visualization state state
+Boost-statechart-viewer is a program for visualization of state
 machines written in C++ with [boost][boost]/[statechart][statechart]
 library. The program itself is written in C++ and uses [clang][clang]
-from [LLVM][llvm] project for analyzing the source code. This program is released under the GNU GPL
-license.
+from [LLVM][llvm] project for analyzing the source code. This program
+is released under the GNU GPL license.
 
 [boost]: http://www.boost.org/
 [statechart]: http://www.boost.org/doc/libs/1_46_1/libs/statechart/doc/index.html
 [clang]: http://clang.llvm.org/
 [llvm]: http://llvm.org/
 
+NEWS
+-----
+2012-07-11 We have got a new [mailing list][list].
+2011-08-11 Added support for orthogonal states.
+
 Authors
 --------
 
-Petr Silhavik <silhape2@fel.cvut.cz> <br>
-Michal Sojka  <sojkam1@fel.cvut.cz>
+[list]: https://rtime.felk.cvut.cz/mailman/listinfo/boost-statechart-viewer
 
-For compiling
-and correctly working program is necessary to have LLVM and clang
-version 2.9.
-
-NEWS
------
-2011-08-11 Added support for orthogonal states.
+Petr Silhavik, Michal Sojka. You can contact us using a
+[mailing list][list] at <boost-statechart-viewer@rtime.felk.cvut.cz>.
 
 Status
 -------
@@ -35,6 +34,11 @@ Status
 - The program understands all options and flags as the compilers (gcc, clang, ...).
 - State machines can be defined in more than one file.
 - The state machine can be inside many namespaces, but not inside templates. 
+
+For compiling and correctly working program it is necessary to have
+LLVM and clang version 2.9. We are currently trying to update it for
+LLVM 3.1.
+
 
 Usage
 ------
