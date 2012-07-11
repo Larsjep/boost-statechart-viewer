@@ -72,7 +72,7 @@ class MyDiagnosticClient : public TextDiagnosticPrinter
    /**
      * This method prints diagnostic and counts diagnostic types.
      */
-	virtual void HandleDiagnostic(Diagnostic::Level DiagLevel, const DiagnosticInfo &Info)
+	virtual void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel, const Diagnostic &Info)
 	{
 		TextDiagnosticPrinter::HandleDiagnostic(DiagLevel, Info); // print diagnostic information using library implementation
 		switch (DiagLevel) // count number of all diagnostic information
@@ -163,7 +163,7 @@ class FindStates : public ASTConsumer
 *   Traverse global decls using DeclGroupRef for handling all global decls. But only interesting decls are processed. Interesting decls are Struct, Class, C++ methods and Namespace.
 *   When Namespace is found it recursively traverse all decls inside this Namespace using method recursive_visit.
 */
-	virtual void HandleTopLevelDecl(DeclGroupRef DGR)
+	virtual bool HandleTopLevelDecl(DeclGroupRef DGR)
 	{
 		SourceLocation loc;
 		string line, output, event;
@@ -195,6 +195,7 @@ class FindStates : public ASTConsumer
 			}
 			output = "";
 		}
+		return true;
 	}
 
 /**
@@ -437,20 +438,18 @@ int main(int argc, char **argv)
 	dopts.ShowColors=1;
 	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::errs(), dopts);
 	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());	
-	Diagnostic diag(dis,mdc);
+	DiagnosticsEngine diag(dis,mdc);
 	FileManager fm( * new FileSystemOptions());
 	SourceManager sm (diag, fm);
-	HeaderSearch *headers = new HeaderSearch(fm);
 	
-	Driver TheDriver(LLVM_BINDIR, llvm::sys::getHostTriple(), "", false, false, diag);
+	Driver TheDriver(LLVM_BINDIR, llvm::sys::getDefaultTargetTriple(), "", false, diag);
 	TheDriver.setCheckInputsExist(true);
 	TheDriver.CCCIsCXX = 1;	
 	TheDriver.ResourceDir = LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
 
 	CompilerInvocation compInv;
 	llvm::SmallVector<const char *, 16> Args(argv, argv + argc);
-	llvm::OwningPtr<Compilation> C(TheDriver.BuildCompilation(Args.size(),
-                                                            Args.data()));
+	llvm::OwningPtr<Compilation> C(TheDriver.BuildCompilation(Args));
 	const driver::JobList &Jobs = C->getJobs();
 	const driver::Command *Cmd = cast<driver::Command>(*Jobs.begin());
 	const driver::ArgStringList &CCArgs = Cmd->getArguments();
@@ -474,29 +473,33 @@ int main(int argc, char **argv)
 	                                  diag);
 
 	HeaderSearchOptions hsopts = compInv.getHeaderSearchOpts();
-	LangOptions lang = compInv.getLangOpts();
-	CompilerInvocation::setLangDefaults(lang, IK_ObjCXX);
+	LangOptions *lang = compInv.getLangOpts();
+	CompilerInvocation::setLangDefaults(*lang, IK_ObjCXX);
 	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, compInv.getTargetOpts());
 	FrontendOptions f = compInv.getFrontendOpts();
-	inputFilename = f.Inputs[0].second;
+	inputFilename = f.Inputs[0].File;
+        HeaderSearch *headers = new HeaderSearch(fm, diag, *lang, ti);
 
 	cout<<"Input filename: "<<inputFilename<<"\n"; // print Input filename
 	cout<<"Output filename: "<<outputFilename<<"\n\n\n"; // print Output filename
 
+	// Create a compiler instance to handle the actual work.
+	CompilerInstance Clang;
+	Clang.setInvocation(&compInv);
 
-	Preprocessor pp(diag, lang, *ti, sm, *headers);
-	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(), lang);
+	Preprocessor pp(diag, *lang, ti, sm, *headers, Clang);
+	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(), *lang);
 		
 	InitializePreprocessor(pp, compInv.getPreprocessorOpts(),hsopts,f);
 	
 	const FileEntry *file = fm.getFile(inputFilename);
 	sm.createMainFileID(file);
-	IdentifierTable tab(lang);
-	Builtin::Context builtins(*ti);
+	IdentifierTable tab(*lang);
+	Builtin::Context builtins;
 	FindStates c;
-	ASTContext ctx(lang, sm, *ti, tab, * new SelectorTable(), builtins,0);
-	mdc->BeginSourceFile(lang, &pp);//start using diagnostic
-	ParseAST(pp, &c, ctx, false, false);
+	ASTContext ctx(*lang, sm, ti, tab, * new SelectorTable(), builtins,0);
+	mdc->BeginSourceFile(*lang, &pp);//start using diagnostic
+	ParseAST(pp, &c, ctx, false, TU_Complete);
 	mdc->EndSourceFile(); //end using diagnostic
 	IO_operations *io = new IO_operations(outputFilename, c.getStateMachine(), c.getNameOfFirstState(), c.getTransitions(), c.getStates(), c.getEvents());
 	io->save_to_file();
