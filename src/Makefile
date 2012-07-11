@@ -1,5 +1,7 @@
-include ../Makefile.config
- 
+-include ../Makefile.config
+
+LLVM_CONFIG ?= llvm-config
+
 LLVM_FLAGS := $(shell $(LLVM_CONFIG) --cxxflags --ldflags --libs jit core)
 
 visualizer: visualizer.cpp stringoper.h iooper.h
