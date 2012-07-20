@@ -41,6 +41,12 @@
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/Compilation.h"
 
+#include "clang/Frontend/FrontendPluginRegistry.h"
+#include "clang/AST/ASTConsumer.h"
+#include "clang/AST/AST.h"
+#include "clang/Frontend/CompilerInstance.h"
+#include "llvm/Support/raw_ostream.h"
+
 //my own header files
 #include "iooper.h"
 
@@ -124,8 +130,11 @@ class FindStates : public ASTConsumer
 	list<string> states;
 	string name_of_machine;
 	string name_of_start;
+	string dest;
 	FullSourceLoc *fsloc; /** Full Source Location instance for holding Source Manager. */
 	public:
+
+	FindStates(string dest) : dest(dest) {}
 
 	list<string> getStates() /** Return list of states of the state machine. */
 	{
@@ -418,92 +427,45 @@ class FindStates : public ASTConsumer
 		}
 	}
 
+  virtual void HandleTranslationUnit(clang::ASTContext &Context) {
+    IO_operations io(dest, getStateMachine(), getNameOfFirstState(), getTransitions(), getStates(), getEvents());
+    io.save_to_file();
+    io.print_stats();
+  }
 };
-/**
-  * Main function provides all initialization before starting analysis of AST. Diagnostic Client is initialized,
-  * Command line options are processed.
-  */
-int main(int argc, char **argv)
-{ 
-	if(argc==1 || strncmp(argv[1],"-help",5)==0)
-	{
-		cout<<endl<<" Boost Statechart Viewer - help"<<endl;
-		cout<<"================================"<<endl;
-		cout<<"The program can be used almost the same way as a C compiler. You will typically need to specify locations for all header files except of the files stored in system folder(in Linux: /usr/...) using -I option. Of course you can specify the output filename (-o option). Program displays all diagnostic messages like compilers. If an error occurs the program stops."<<endl<<endl;
-		return 0;
-	}
-	string inputFilename = "";
-	string outputFilename = "graph.dot"; // initialize output Filename
-	DiagnosticOptions dopts;
-	dopts.ShowColors=1;
-	MyDiagnosticClient *mdc = new MyDiagnosticClient(llvm::errs(), dopts);
-	llvm::IntrusiveRefCntPtr<DiagnosticIDs> dis(new DiagnosticIDs());	
-	DiagnosticsEngine diag(dis,mdc);
-	FileManager fm( * new FileSystemOptions());
-	SourceManager sm (diag, fm);
-	
-	Driver TheDriver(LLVM_BINDIR, llvm::sys::getDefaultTargetTriple(), "", false, diag);
-	TheDriver.setCheckInputsExist(true);
-	TheDriver.CCCIsCXX = 1;	
-	TheDriver.ResourceDir = LLVM_PREFIX "/lib/clang/" CLANG_VERSION_STRING;
 
-	CompilerInvocation compInv;
-	llvm::SmallVector<const char *, 16> Args(argv, argv + argc);
-	llvm::OwningPtr<Compilation> C(TheDriver.BuildCompilation(Args));
-	const driver::JobList &Jobs = C->getJobs();
-	const driver::Command *Cmd = cast<driver::Command>(*Jobs.begin());
-	const driver::ArgStringList &CCArgs = Cmd->getArguments();
-	for(unsigned i = 0; i<Args.size();i++) // find -o in ArgStringList
-	{	
-		if(strncmp(Args[i],"-o",2)==0) 
-		{
-			if(strlen(Args[i])>2)
-			{
-				string str = Args[i];
-				outputFilename = str.substr(2);
-			}
-			else outputFilename = Args[i+1];
-			break;
-		}
-	}
-		
-	CompilerInvocation::CreateFromArgs(compInv,
-	                                  const_cast<const char **>(CCArgs.data()),
-	                                  const_cast<const char **>(CCArgs.data())+CCArgs.size(),
-	                                  diag);
+class VisualizeStatechartAction : public PluginASTAction {
+protected:
+  ASTConsumer *CreateASTConsumer(CompilerInstance &CI, llvm::StringRef) {
+    size_t dot = getCurrentFile().find_last_of('.');
+    std::string dest = getCurrentFile().substr(0, dot);
+    dest.append(".dot");
+    return new FindStates(dest);
+  }
 
-	HeaderSearchOptions hsopts = compInv.getHeaderSearchOpts();
-	LangOptions *lang = compInv.getLangOpts();
-	CompilerInvocation::setLangDefaults(*lang, IK_ObjCXX);
-	TargetInfo *ti = TargetInfo::CreateTargetInfo(diag, compInv.getTargetOpts());
-	FrontendOptions f = compInv.getFrontendOpts();
-	inputFilename = f.Inputs[0].File;
-        HeaderSearch *headers = new HeaderSearch(fm, diag, *lang, ti);
+  bool ParseArgs(const CompilerInstance &CI,
+                 const std::vector<std::string>& args) {
+    for (unsigned i = 0, e = args.size(); i != e; ++i) {
+      llvm::errs() << "Visualizer arg = " << args[i] << "\n";
 
-	cout<<"Input filename: "<<inputFilename<<"\n"; // print Input filename
-	cout<<"Output filename: "<<outputFilename<<"\n\n\n"; // print Output filename
+      // Example error handling.
+      if (args[i] == "-an-error") {
+        DiagnosticsEngine &D = CI.getDiagnostics();
+        unsigned DiagID = D.getCustomDiagID(
+          DiagnosticsEngine::Error, "invalid argument '" + args[i] + "'");
+        D.Report(DiagID);
+        return false;
+      }
+    }
+    if (args.size() && args[0] == "help")
+      PrintHelp(llvm::errs());
 
-	// Create a compiler instance to handle the actual work.
-	CompilerInstance Clang;
-	Clang.setInvocation(&compInv);
+    return true;
+  }
+  void PrintHelp(llvm::raw_ostream& ros) {
+    ros << "Help for Visualize Statechart plugin goes here\n";
+  }
 
-	Preprocessor pp(diag, *lang, ti, sm, *headers, Clang);
-	pp.getBuiltinInfo().InitializeBuiltins(pp.getIdentifierTable(), *lang);
-		
-	InitializePreprocessor(pp, compInv.getPreprocessorOpts(),hsopts,f);
-	
-	const FileEntry *file = fm.getFile(inputFilename);
-	sm.createMainFileID(file);
-	IdentifierTable tab(*lang);
-	Builtin::Context builtins;
-	FindStates c;
-	ASTContext ctx(*lang, sm, ti, tab, * new SelectorTable(), builtins,0);
-	mdc->BeginSourceFile(*lang, &pp);//start using diagnostic
-	ParseAST(pp, &c, ctx, false, TU_Complete);
-	mdc->EndSourceFile(); //end using diagnostic
-	IO_operations *io = new IO_operations(outputFilename, c.getStateMachine(), c.getNameOfFirstState(), c.getTransitions(), c.getStates(), c.getEvents());
-	io->save_to_file();
-	io->print_stats();
-	mdc->print_stats();
-	return 0;
-}
+};
+
+static FrontendPluginRegistry::Add<VisualizeStatechartAction> X("visualize-statechart", "visualize statechart");

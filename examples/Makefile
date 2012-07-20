@@ -1,11 +1,16 @@
 .PHONY: all
 all: test.pdf StopWatch.pdf main.pdf
 
-%.dot: %.cpp ../src/visualizer
-	../src/visualizer $< -o $@
+VISUALIZER = -Xclang -load -Xclang ../src/visualizer.so -Xclang -plugin -Xclang visualize-statechart
 
-%.pdf: %.dot
-	dot -Tps $< | epstopdf --filter > $@
+%.o %.dot: %.cpp ../src/visualizer.so
+	clang++ $(VISUALIZER) -c -o $(<:.cpp=.o) $<
+
+%.eps: %.dot
+	dot -Tps $< > $@
+
+%.pdf: %.eps
+	epstopdf $< > $@
 
 ../src/visualizer:
 	$(MAKE) -C ../src
