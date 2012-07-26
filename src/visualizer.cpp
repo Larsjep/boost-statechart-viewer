@@ -1,6 +1,6 @@
-/** @file */ 
-////////////////////////////////////////////////////////////////////////////////////////  
-//    
+/** @file */
+////////////////////////////////////////////////////////////////////////////////////////
+//
 //    This file is part of Boost Statechart Viewer.
 //
 //    Boost Statechart Viewer is free software: you can redistribute it and/or modify
@@ -86,8 +86,8 @@ class MyDiagnosticClient : public TextDiagnosticPrinter
 			case 0 : nignored+=1; break;
 			case 1 : nnotes+=1; break;
 			case 2 : nwarnings+=1; break;
-			default : nerrors+=1; 
-						 print_stats(); 
+			default : nerrors+=1;
+						 print_stats();
 						 exit(1);
 		}
 	}
@@ -102,20 +102,20 @@ class MyDiagnosticClient : public TextDiagnosticPrinter
 		cout<<"Number of warnings: "<<nwarnings<<"\n";
 		cout<<"Number of errors and fatal errors: "<<nerrors<<"\n";
 	}
-	
+
 	int getNbrOfWarnings() /** Return number of warnings */
 	{
-		return nwarnings;		
+		return nwarnings;
 	}
-	
+
 	int getNbrOfNotes() /** Return number of notes */
 	{
-		return nnotes;		
+		return nnotes;
 	}
 
 	int getNbrOfIgnored() /** Return number of ignored */
 	{
-		return nignored;		
+		return nignored;
 	}
 };
 
@@ -124,7 +124,7 @@ class MyDiagnosticClient : public TextDiagnosticPrinter
  */
 class FindStates : public ASTConsumer
 {
-	list<string> transitions; 
+	list<string> transitions;
 	list<string> cReactions; /** list of custom reactions. After all files are traversed this list should be empty. */
 	list<string> events;
 	list<string> states;
@@ -140,12 +140,12 @@ class FindStates : public ASTConsumer
 	{
 		return states;
 	}
-	
+
 	list<string> getTransitions() /** Return list of transitions. */
 	{
 		return transitions;
 	}
-		
+
 	list<string> getEvents() /** Return list of events. */
 	{
 		return events;
@@ -160,9 +160,9 @@ class FindStates : public ASTConsumer
 	{
 		return name_of_start;
 	}
-	
+
 	virtual void Initialize(ASTContext &ctx)/** Run after the AST is constructed before the consumer starts to work. So this function works like constructor. */
-	{	
+	{
 		fsloc = new FullSourceLoc(* new SourceLocation(), ctx.getSourceManager());
 		name_of_start = "";
 		name_of_machine = "";
@@ -177,29 +177,29 @@ class FindStates : public ASTConsumer
 		SourceLocation loc;
 		string line, output, event;
 		llvm::raw_string_ostream x(output);
-		for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i) 
+		for (DeclGroupRef::iterator i = DGR.begin(), e = DGR.end(); i != e; ++i)
 		{
 			const Decl *decl = *i;
 			loc = decl->getLocation();
 			if(loc.isValid())
 			{
 				if(decl->getKind()==35)
-				{					
+				{
 					method_decl(decl);
 				}
 				if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
-					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a struct or class	
+					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a struct or class
 					{
 						struct_class(decl);
 					}
-				}	
+				}
 				if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
 				{
-					
+
 					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
 					recursive_visit(declCont);
-				
+
 				}
 			}
 			output = "";
@@ -220,46 +220,46 @@ class FindStates : public ASTConsumer
 			const Decl *decl = *i;
 			loc = decl->getLocation();
 			if(loc.isValid())
-			{	
+			{
 				if(decl->getKind()==35)
 				{
 					method_decl(decl);
 				}
 				else if (const TagDecl *tagDecl = dyn_cast<TagDecl>(decl))
 				{
-					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class	
+					if(tagDecl->isStruct() || tagDecl->isClass()) //is it a structure or class
 					{
 						struct_class(decl);
-					}	
+					}
 				}
 				else if(const NamespaceDecl *namespaceDecl = dyn_cast<NamespaceDecl>(decl))
 				{
-					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);			
+					DeclContext *declCont = namespaceDecl->castToDeclContext(namespaceDecl);
 					recursive_visit(declCont);
 				}
 			}
 			output = "";
-		} 
+		}
 	}
-		
+
 /**
 *	This function works with class or struct. It splits the decl into 3 interesting parts.
 *	The state machine decl, state decl and event decl.
 */
 	void struct_class(const Decl *decl)
 	{
-		string output, line, ret, trans, event;	
+		string output, line, ret, trans, event;
 		llvm::raw_string_ostream x(output);
 		decl->print(x);
 		line = get_line_of_code(x.str());
-		
+
 		output = "";
 		int pos;
 		const NamedDecl *namedDecl = dyn_cast<NamedDecl>(decl);
 		if(is_derived(line))
 		{
 			const CXXRecordDecl *cRecDecl = dyn_cast<CXXRecordDecl>(decl);
-					
+
 			if(find_events(cRecDecl, line))
 			{
 				events.push_back(namedDecl->getNameAsString());
@@ -276,10 +276,10 @@ class FindStates : public ASTConsumer
 			}
 			else
 			{
-				ret = find_states(cRecDecl, line); 
+				ret = find_states(cRecDecl, line);
 				if(!ret.empty())
 				{
-					states.push_back(ret);			
+					states.push_back(ret);
 					methods_in_class(decl,namedDecl->getNameAsString());
 				}
 			}
@@ -292,22 +292,22 @@ class FindStates : public ASTConsumer
 */
 	void methods_in_class(const Decl *decl, const string state)
 	{
-		string output, line, ret, trans, event;	
+		string output, line, ret, trans, event;
 		llvm::raw_string_ostream x(output);
 		int pos, num;
 		const TagDecl *tagDecl = dyn_cast<TagDecl>(decl);
-		const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);			
+		const DeclContext *declCont = tagDecl->castToDeclContext(tagDecl);
 		output="";
 		std::cout<<"Found state: "<<state<<std::endl;
-		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i) 
+		for (DeclContext::decl_iterator i = declCont->decls_begin(), e = declCont->decls_end(); i != e; ++i)
 		{
 			if (i->getKind()==26) // typedefs
 			{
 				i->print(x);
 				output = x.str();
-				line = clean_spaces(cut_type(output));		
+				line = clean_spaces(cut_type(output));
 				ret = find_transitions(state,line);
-				if(!ret.empty()) 
+				if(!ret.empty())
 				{
 					num = count(ret,';')+1;
 					for(int i = 0;i<num;i++)
@@ -318,10 +318,10 @@ class FindStates : public ASTConsumer
 							ret = ret.substr(1);
 							pos = ret.find(";");
 							if(pos==-1) cReactions.push_back(ret);
-							else cReactions.push_back(ret.substr(0,pos));	
+							else cReactions.push_back(ret.substr(0,pos));
 							num-=1;
 						}
-						else 
+						else
 						{
 							if(pos==-1) transitions.push_back(ret);
 							else transitions.push_back(ret.substr(0,pos));
@@ -333,7 +333,7 @@ class FindStates : public ASTConsumer
 			}
 			if(i->getKind()==35) method_decl(*i);// C++ method
 		}
-		
+
 	}
 
  /**
@@ -341,13 +341,13 @@ class FindStates : public ASTConsumer
    */
 	void method_decl(const Decl *decl)
 	{
-		string output, line, event;	
+		string output, line, event;
 		llvm::raw_string_ostream x(output);
 
 		if(decl->hasBody())
 		{
 			decl->print(x);
-			line = get_return(x.str());			
+			line = get_return(x.str());
 			if(get_model(line)==5)
 			{
 				//std::cout<<"metodass"<<std::endl;
@@ -361,11 +361,11 @@ class FindStates : public ASTConsumer
 				line = cut_namespaces(line.substr(0,line.rfind("::")));
 				line.append(",");
 				line.append(event);
-				find_return_stmt(decl->getBody(),line); 
+				find_return_stmt(decl->getBody(),line);
 				for(list<string>::iterator i = cReactions.begin();i!=cReactions.end();i++) // erase info about it from list of custom reactions
 				{
 					event = *i;
-					if(line.compare(event)==0) 
+					if(line.compare(event)==0)
 					{
 						cReactions.erase(i);
 						break;
@@ -380,13 +380,13 @@ class FindStates : public ASTConsumer
 		if(statemt->getStmtClass() == 99) test_stmt(dyn_cast<CaseStmt>(statemt)->getSubStmt(), event);
 		else
 		{
-			for (Stmt::child_range range = statemt->children(); range; ++range)    
+			for (Stmt::child_range range = statemt->children(); range; ++range)
 			{
 				test_stmt(*range, event);
 			}
 		}
 	}
-	
+
 	void test_stmt(Stmt *stmt, string event) /** test statement for its kind Using number as identifier for all Statement Classes.*/
 	{
 		const SourceManager &sman = fsloc->getManager();
@@ -394,7 +394,7 @@ class FindStates : public ASTConsumer
 		string line, param;
 		type = stmt->getStmtClass();
 		switch(type)
-		{	
+		{
 			case 8 :	find_return_stmt(dyn_cast<DoStmt>(stmt)->getBody(), event); // do
 						break;
 			case 86 :	find_return_stmt(dyn_cast<ForStmt>(stmt)->getBody(), event); // for
@@ -404,7 +404,7 @@ class FindStates : public ASTConsumer
 						break;
 			case 90 :	find_return_stmt(dyn_cast<LabelStmt>(stmt)->getSubStmt(), event); //label
 						break;
-			case 98 :	line = sman.getCharacterData(dyn_cast<ReturnStmt>(stmt)->getReturnLoc()); 
+			case 98 :	line = sman.getCharacterData(dyn_cast<ReturnStmt>(stmt)->getReturnLoc());
 						line = get_line_of_code(line).substr(6);
 						line = line.substr(0,line.find("("));
 						if(get_model(line)==6)
