@@ -183,7 +183,7 @@ class FindStates : public ASTConsumer
 			loc = decl->getLocation();
 			if(loc.isValid())
 			{
-				if(decl->getKind()==35)
+				if(dyn_cast<FunctionDecl>(decl))
 				{
 					method_decl(decl);
 				}
@@ -221,7 +221,7 @@ class FindStates : public ASTConsumer
 			loc = decl->getLocation();
 			if(loc.isValid())
 			{
-				if(decl->getKind()==35)
+				if(dyn_cast<FunctionDecl>(decl))
 				{
 					method_decl(decl);
 				}
@@ -331,7 +331,7 @@ class FindStates : public ASTConsumer
 					output="";
 				}
 			}
-			if(i->getKind()==35) method_decl(*i);// C++ method
+			if (dyn_cast<FunctionDecl>(*i)) method_decl(*i);// C++ method
 		}
 
 	}
@@ -341,17 +341,17 @@ class FindStates : public ASTConsumer
    */
 	void method_decl(const Decl *decl)
 	{
+		const FunctionDecl *fDecl = dyn_cast<FunctionDecl>(decl);
 		string output, line, event;
 		llvm::raw_string_ostream x(output);
 
-		if(decl->hasBody())
+		if(fDecl->hasBody() && fDecl->getNumParams() > 0)
 		{
 			decl->print(x);
 			line = get_return(x.str());
 			if(get_model(line)==5)
 			{
 				//std::cout<<"metodass"<<std::endl;
-				const FunctionDecl *fDecl = dyn_cast<FunctionDecl>(decl);
 				const ParmVarDecl *pvd = fDecl->getParamDecl(0);
 				QualType qt = pvd->getOriginalType();
 				event = qt.getAsString();
