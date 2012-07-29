@@ -1,6 +1,6 @@
-/** @file */ 
-////////////////////////////////////////////////////////////////////////////////////////  
-//    
+/** @file */
+////////////////////////////////////////////////////////////////////////////////////////
+//
 //    This file is part of Boost Statechart Viewer.
 //
 //    Boost Statechart Viewer is free software: you can redistribute it and/or modify
@@ -30,11 +30,11 @@ using namespace std;
 * This class provides saving information about state machine to a specified output file. It saves states and transitions and also it creates the transition table.
 */
 class IO_operations
-{	
+{
 	list<string> transitions; /** list of transitions */
 	list<string> states; /** list of states */
 	list<string> events; /** list of events */
-	string outputFilename; 
+	string outputFilename;
 	string name_of_machine;
 	string name_of_first_state;
 	string *table; /** transition table. It is being allocated when starting the creation of output file. */
@@ -50,7 +50,7 @@ class IO_operations
 				if(model.compare(0,model.size(),table[i])==0) return i;
 			}
 		}
-		else 
+		else
 		{
 			for(int i = 1;i<rows;i++)
 			if(model.compare(0,model.size(),table[i*cols+2])==0) return i;
@@ -74,12 +74,12 @@ class IO_operations
 	{
 		delete [] table;
 	}
-	
+
 	void setEvents(list<string> events) /** Set list of events to an attribute */
 	{
 		this->events = events;
 	}
-	
+
 	void setTransitions(list<string> transitions) /** Set list of transitions to an attribute */
 	{
 		this->transitions = transitions;
@@ -95,7 +95,7 @@ class IO_operations
 		name_of_machine = name_of_FSM;
 	}
 
-	void setNameOfFirstState(string first_state) /** Set name of start state to an attribute */ 
+	void setNameOfFirstState(string first_state) /** Set name of start state to an attribute */
 	{
 		name_of_first_state = first_state;
 	}
@@ -113,7 +113,7 @@ class IO_operations
 		}
 		return false;
 	}
-	
+
 	bool write_states(ofstream& filestr) /** This method write states to the output file and also to transition table. */
 	{
 		int pos1, pos2, cnt, subs, num_start, orto = 0;
@@ -132,12 +132,12 @@ class IO_operations
 		for(int i = 0;i<=cnt;i++)
 		{
 			if(i == cnt) sState[i] = str;
-			else 
+			else
 			{
 				sState[i] = str.substr(0,str.find(','));
 				str = str.substr(str.find(',')+1);
 			}
-		}		
+		}
 		for(list<string>::iterator i = nstates.begin();i!=nstates.end();i++) // write all states in the context of the automaton
 		{
 			state = *i;
@@ -147,19 +147,19 @@ class IO_operations
 				orto = 1;
 				if(cnt>1)cnt = 2;
 			}
-			if(cnt==1) 
+			if(cnt==1)
 			{
 				pos1 = state.find(",");
-				if(orto == 1) ctx = cut_namespaces(cut_namespaces(state.substr(pos1+1),1)); 				
-				else ctx = cut_namespaces(state.substr(pos1+1));			
+				if(orto == 1) ctx = cut_namespaces(cut_namespaces(state.substr(pos1+1),1));
+				else ctx = cut_namespaces(state.substr(pos1+1));
 				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 				{
 					str = cut_namespaces(state.substr(0,pos1));
-					if(test_start(sState,str,num_start)) 
+					if(test_start(sState,str,num_start))
 					{
 						filestr<<str<<" [peripheries=2];\n";
 						table[cols*nState] = "*";
-					}			
+					}
 					else filestr<<str<<"\n";
 					table[cols*nState+2] = str;
 					table[cols*nState+1] = context;
@@ -172,19 +172,19 @@ class IO_operations
 			{
 				pos1 = state.find(",");
 				pos2 = state.substr(pos1+1).find(",")+pos1+1;
-				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));	
+				ctx = cut_namespaces(state.substr(pos1+1,pos2-pos1-1));
 				if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
-				{				
+				{
 					str = cut_namespaces(state.substr(0,pos1));
-					if(test_start(sState,str,num_start)) 
+					if(test_start(sState,str,num_start))
 					{
 						filestr<<str<<" [peripheries=2];\n";
 						table[cols*nState] = "*";
 					}
 					else filestr<<str<<"\n";
 					table[cols*nState+2] = str;
-					table[cols*nState+1] = context;			
-					nState+=1;					
+					table[cols*nState+1] = context;
+					nState+=1;
 				}
 			}
 		}
@@ -193,7 +193,7 @@ class IO_operations
 		while(!nstates.empty()) // substates ?
 		{
 			state = nstates.front();
-			filestr<<"subgraph cluster"<<subs<<" {\n";			
+			filestr<<"subgraph cluster"<<subs<<" {\n";
 			pos1 = state.find(",");
 			pos2 = state.substr(pos1+1).find(",")+pos1+1;
 			if(pos1 == pos2) return false;
@@ -207,12 +207,12 @@ class IO_operations
 			for(int i = 0;i<=cnt;i++)
 			{
 				if(i == cnt) sState[i] = str;
-				else 
+				else
 				{
 					sState[i] = str.substr(0,str.find(','));
 					str = str.substr(str.find(',')+1);
 				}
-			}	
+			}
 			nstates.pop_front();
 			for(list<string>::iterator i = nstates.begin();i!=nstates.end();i++)
 			{
@@ -222,11 +222,11 @@ class IO_operations
 				{
 					orto = 1;
 					if(cnt>1)cnt = 2;
-				}				
+				}
 				if(cnt==1)
 				{
 					pos1 = state.find(",");
-					if(orto == 1) ctx = cut_namespaces(cut_namespaces(state.substr(pos1+1),1)); 				
+					if(orto == 1) ctx = cut_namespaces(cut_namespaces(state.substr(pos1+1),1));
 					else ctx = cut_namespaces(state.substr(pos1+1));
 					if(ctx.compare(0,context.length(),context)==0 && context.length()==ctx.length())
 					{
@@ -256,7 +256,7 @@ class IO_operations
 						{
 							filestr<<str<<" [peripheries=2];\n";
 							table[cols*nState]="*";
-						}					
+						}
 						else filestr<<str<<"\n";
 						table[cols*nState+2] = str;
 						table[cols*nState+1] = context;
@@ -266,7 +266,7 @@ class IO_operations
 			}
 			filestr<<"}\n";
 			subs+=1;
-			delete [] sState;	
+			delete [] sState;
 		}
 		return true;
 	}
@@ -279,9 +279,9 @@ class IO_operations
 		{
 			params = *i;
 			if(count(params,',')==2)
-			{			
+			{
 				pos1 = params.find(",");
-				if(pos1==0) 
+				if(pos1==0)
 				{
 					dest = "(deferred)";
 					pos2 = params.rfind(",");
@@ -301,7 +301,7 @@ class IO_operations
 				dest.append(",");
 				table[find_place(state,2)*cols+find_place(event,1)]+=dest;
 			}
-		}		
+		}
 		return;
 	}
 
@@ -317,23 +317,23 @@ class IO_operations
 
 	void save_to_file() /** Create output file stream and write there the name of state machine. It controls the whole process of writing into output files. */
 	{
-		if(!name_of_first_state.empty())	
-		{	
+		if(!name_of_first_state.empty())
+		{
 			ofstream filestr(outputFilename.c_str());
 			filestr<<"digraph "<< name_of_machine<< " {\n";
 			cols = events.size()+3;
 			rows = states.size()+1;
 			table = new string [cols*rows];
-			fill_table_with_events();			
-			if(!write_states(filestr)) 
+			fill_table_with_events();
+			if(!write_states(filestr))
 			{
 				cerr<<"Error during writing states.\n";
-				filestr<<"}";		
+				filestr<<"}";
 				filestr.close();
-				return;			
+				return;
 			}
 			write_transitions(filestr);
-			filestr<<"}";		
+			filestr<<"}";
 			filestr.close();
 			// call write_reactions();
 			print_table();
@@ -383,17 +383,17 @@ class IO_operations
 				str = table[i*cols+j];
 				nbr = count(str,',');
 				if(nbr>0)
-				{				
+				{
 					cout<<left<<str.substr(0,str.find(","))<<" | ";
-					if(nbr>1) 
+					if(nbr>1)
 					{
 						table[i*cols+j] = str.substr(str.find(",")+1);
 						multiline = 1;
 					}
 					else table[i*cols+j]="";
-						
+
 				}
-				else 
+				else
 				{
 					cout<<left<<str<<" | ";
 					table [i*cols+j]="";

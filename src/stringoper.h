@@ -1,6 +1,6 @@
-/** @file */ 
-////////////////////////////////////////////////////////////////////////////////////////  
-//    
+/** @file */
+////////////////////////////////////////////////////////////////////////////////////////
+//
 //    This file is part of Boost Statechart Viewer.
 //
 //    Boost Statechart Viewer is free software: you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 
 using namespace std;
 using namespace clang;
-	
+
 string clean_spaces(const string line) /** Remove gaps from string.*/
 {
 	unsigned i;
@@ -48,8 +48,8 @@ string cut_commentary(const string line) /** This function cuts commentaries at 
 
 string get_line_of_code(const string code) /** Thie function return the line of code that belongs to a declaration. The output string line doesn't have gaps and commentaries.*/
 {
-	string ret;	
-	unsigned i;	
+	string ret;
+	unsigned i;
 	for(i = 0;i<code.length();i++)
 	{
 		if(code[i]=='\n'||code[i]=='{') break;
@@ -57,11 +57,11 @@ string get_line_of_code(const string code) /** Thie function return the line of 
 	ret = code.substr(0,i);
 	ret = clean_spaces(ret);
 	return cut_commentary(ret);
-} 
+}
 
 string get_return(const string code) /** Return return statement. */
 {
-	string ret;	
+	string ret;
 	unsigned i;
 	for(i = 0;i<code.length();i++)
 	{
@@ -145,7 +145,7 @@ string get_next_base(const string line) /** Get next super classes of this decla
 		if(line[i]==',' && brackets == 0) break;
 	}
 	return line.substr(i+1);
-}  
+}
 
 string get_first_base(const string line) /** Get the first super class of this declarations. */
 {
@@ -158,19 +158,19 @@ string get_first_base(const string line) /** Get the first super class of this d
 		if(line[i]==',' && brackets == 0) break;
 	}
 	return line.substr(0,i);
-}  
+}
 
 bool is_state(const string line) /** Test if this declaration is a state. It is used to test the base classes. */
 {
 	if(cut_namespaces(line).compare(0,12,"simple_state")==0)
 	{
-		return true;	
+		return true;
 	}
 	else
 	{
 		if(cut_namespaces(line).compare(0,5,"state")==0)
 		{
-			return true;	
+			return true;
 		}
 		return false;
 	}
@@ -204,10 +204,10 @@ bool is_list(const string line) /** Test if this decl is mpl::list. */
 	{
 		if(line[i]=='<') break;
 		if(line[i]==':' && line[i+1]==':') pos = i+2;
-	}	
+	}
 	if(line.substr(pos).compare(0,4,"list")==0)
 	{
-		return true;	
+		return true;
 	}
 	else
 	{
@@ -228,7 +228,7 @@ string get_inner_part(const string line) /** Get inner part of the list. */
 	{
 		if(str[i]=='<') pos+=1;
 		if(str[i]=='>')
-		{ 
+		{
 			if(pos==0) break;
 			else pos-=1;
 		}
@@ -249,11 +249,11 @@ int get_model(const string line) /** Test the string to has a specified model. *
 		case 7 : if(str.compare(0,7,"transit")==0) return 6;
 				   break;
 		case 8 : if(str.compare(0,8,"deferral")==0) return 13;
-				   break;		
+				   break;
 		case 10 : if(str.compare(0,10,"transition")==0) return 11;
 					 break;
 		case 11 : if(str.compare(0,11,"defer_event")==0) return 7;
-					 break; 
+					 break;
 		case 13 : if(str.compare(0,13,"state_machine")==0) return 3;
 					 break;
 		case 15 : if(str.compare(0,15,"custom_reaction")==0) return 12;
@@ -269,18 +269,18 @@ string get_params(string line) /** Return parameters of the specified transition
 	int pos_end = line.rfind(">");
 	return line.substr(pos_front,pos_end-pos_front);
 }
-	
+
 string find_states(const CXXRecordDecl *cRecDecl, string line) /** test if the struct/class is he state (must be derived from simple_state or state). */
-{	
+{
 	string super_class = get_super_class(line), base, params;
 	if(cRecDecl->getNumBases()>1)
 	{
-		
+
 		for(unsigned i = 0; i<cRecDecl->getNumBases();i++ )
 		{
 			if(i!=cRecDecl->getNumBases()-1) base = get_first_base(super_class);
 			else base = super_class;
-			if(is_state(super_class)) 
+			if(is_state(super_class))
 			{
 				params = get_params(super_class);
 			}
@@ -291,18 +291,18 @@ string find_states(const CXXRecordDecl *cRecDecl, string line) /** test if the s
 		}
 	}
 	else
-	{ 		
-		if(is_state(super_class)) 
-		{			
+	{
+		if(is_state(super_class))
+		{
 			params = get_params(super_class);
 		}
 		else params = "";
 	}
 	return params;
 }
-		
+
 string find_name_of_machine(const CXXRecordDecl *cRecDecl, string line) /** Find name of the state machine and the start state. */
-{	
+{
 	string super_class = get_super_class(line), base, params;
 	if(cRecDecl->getNumBases()>1)
 	{
@@ -321,7 +321,7 @@ string find_name_of_machine(const CXXRecordDecl *cRecDecl, string line) /** Find
 		}
 	}
 	else
-	{ 
+	{
 		if(get_model(super_class)==3)
 		{
 			params = get_params(super_class);
@@ -331,9 +331,9 @@ string find_name_of_machine(const CXXRecordDecl *cRecDecl, string line) /** Find
 }
 
 string find_transitions (const string name_of_state, string line) /** Traverse all methods for finding declarations of transitions. */
-{	
+{
 	string dest, params, base, trans;
-	int num = count(line,'<');	
+	int num = count(line,'<');
 	if(num>1)
 	{
 		num-=1;
@@ -344,7 +344,7 @@ string find_transitions (const string name_of_state, string line) /** Traverse a
 	}
 	for(int j = 0;j<num;j++)
 	{
-		if(j!=num-1) base = get_first_base(line);			
+		if(j!=num-1) base = get_first_base(line);
 		else base = line;
 		if(get_model(base)>10)
 		{
@@ -353,19 +353,19 @@ string find_transitions (const string name_of_state, string line) /** Traverse a
 			else dest = "";
 			dest.append(name_of_state);
 			params = get_params(base);
-			dest.append(",");							
+			dest.append(",");
 			dest.append(params);
-			trans.append(dest);		
+			trans.append(dest);
 			if(j!=num-1) trans.append(";");
 		}
 		line = get_next_base(line);
 	}
 	if(trans[trans.length()-1]==';') return trans.substr(0,trans.length()-1);
-	else return trans;	
+	else return trans;
 }
 
 bool find_events(const CXXRecordDecl *cRecDecl, string line) /** This function provides testing if the decl is decl of event*/
-{	
+{
 	string super_class = get_super_class(line), base, params;
 	if(cRecDecl->getNumBases()>1)
 	{
@@ -381,9 +381,8 @@ bool find_events(const CXXRecordDecl *cRecDecl, string line) /** This function p
 		}
 	}
 	else
-	{ 
+	{
 		if(get_model(super_class)==1)return true;
 	}
 	return false;
 }
-
