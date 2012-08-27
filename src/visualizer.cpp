@@ -169,6 +169,7 @@ public:
 	    sc.states.push_back(state);
 
 	    IdentifierInfo& II = Context->Idents.get("reactions");
+	    // TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
 	    for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
 		 Reactions.first != Reactions.second; ++Reactions.first)
 		HandleReaction(*Reactions.first, RecordDecl);
