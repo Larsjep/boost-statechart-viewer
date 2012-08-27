@@ -94,16 +94,32 @@ class Visitor : public RecursiveASTVisitor<Visitor>
 {
     ASTContext *Context;
     Statechart &sc;
+    DiagnosticsEngine &Diags;
+    unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
+	diag_found_state, diag_found_statemachine;
+
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
 
-    explicit Visitor(ASTContext *Context, Statechart &sc)
-	: Context(Context), sc(sc) {}
+    explicit Visitor(ASTContext *Context, Statechart &sc, DiagnosticsEngine &Diags)
+	: Context(Context), sc(sc), Diags(Diags)
+    {
+	diag_found_statemachine =
+	    Diags.getCustomDiagID(DiagnosticsEngine::Note, "Found statemachine '%0'");
+	diag_found_state =
+	    Diags.getCustomDiagID(DiagnosticsEngine::Note, "Found state '%0'");
+	diag_unhandled_reaction_type =
+	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Unhandled reaction type '%0'");
+	diag_unhandled_reaction_decl =
+	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Unhandled reaction decl '%0'");
+    }
 
-    void HandleReaction(const Type *T, CXXRecordDecl *SrcState)
+    DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID) { return Diags.Report(Loc, DiagID); }
+
+    void HandleReaction(const Type *T, const SourceLocation Loc, CXXRecordDecl *SrcState)
     {
 	if (const ElaboratedType *ET = dyn_cast<ElaboratedType>(T))
-	    HandleReaction(ET->getNamedType().getTypePtr(), SrcState);
+	    HandleReaction(ET->getNamedType().getTypePtr(), Loc, SrcState);
 	else if (const TemplateSpecializationType *TST = dyn_cast<TemplateSpecializationType>(T)) {
 	    string name = TST->getTemplateName().getAsTemplateDecl()->getQualifiedNameAsString();
 	    if (name == "boost::statechart::transition") {
@@ -114,26 +130,22 @@ public:
 
 		sc.transitions.push_back(Statechart::Transition(SrcState->getName(), DstState->getName(),
 								Event->getName()));
-		//llvm::errs() << EventRec->getName() <<  << "\n";
 	    } else if (name == "boost::mpl::list") {
 		for (TemplateSpecializationType::iterator Arg = TST->begin(), End = TST->end(); Arg != End; ++Arg)
-		    HandleReaction(Arg->getAsType().getTypePtr(), SrcState);
+		    HandleReaction(Arg->getAsType().getTypePtr(), Loc, SrcState);
 	    }
 	    //->getDecl()->getQualifiedNameAsString();
-	} else {
-	    llvm::errs() << "Unhandled reaction Type: " << T->getTypeClassName() << "\n";
-	    assert(0);
-	}
+	} else
+	    Diag(Loc, diag_unhandled_reaction_type) << T->getTypeClassName();
     }
 
     void HandleReaction(const NamedDecl *Decl, CXXRecordDecl *SrcState)
     {
 	if (const TypedefDecl *r = dyn_cast<TypedefDecl>(Decl))
-	    HandleReaction(r->getCanonicalDecl()->getUnderlyingType().getTypePtr(), SrcState);
-	else {
-	    llvm::errs() << "Unhandled reaction Decl: " << Decl->getDeclKindName() << "\n";
-	    assert(0);
-	}
+	    HandleReaction(r->getCanonicalDecl()->getUnderlyingType().getTypePtr(),
+			   r->getLocStart(), SrcState);
+	else
+	    Diag(Decl->getLocation(), diag_unhandled_reaction_decl) << Decl->getDeclKindName();
     }
 
 
@@ -142,28 +154,28 @@ public:
 	if (!Declaration->isCompleteDefinition())
 	    return true;
 
-	MyCXXRecordDecl *StateDecl = static_cast<MyCXXRecordDecl*>(Declaration);
+	MyCXXRecordDecl *RecordDecl = static_cast<MyCXXRecordDecl*>(Declaration);
 
-	if (StateDecl->isDerivedFrom("boost::statechart::simple_state"))
+	if (RecordDecl->isDerivedFrom("boost::statechart::simple_state"))
 	{
-	    string state(StateDecl->getName()); //getQualifiedNameAsString());
-	    llvm::errs() << "Found state " << state << "\n";
+	    string state(RecordDecl->getName()); //getQualifiedNameAsString());
+	    Diag(RecordDecl->getLocStart(), diag_found_state) << state;
 	    sc.states.push_back(state);
 
 	    IdentifierInfo& II = Context->Idents.get("reactions");
-	    for (DeclContext::lookup_result Reactions = StateDecl->lookup(DeclarationName(&II));
+	    for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
 		 Reactions.first != Reactions.second; ++Reactions.first)
-		HandleReaction(*Reactions.first, StateDecl);
+		HandleReaction(*Reactions.first, RecordDecl);
 	}
-	else if (StateDecl->isDerivedFrom("boost::statechart::state_machine"))
+	else if (RecordDecl->isDerivedFrom("boost::statechart::state_machine"))
 	{
-	    sc.name = StateDecl->getQualifiedNameAsString();
-	    sc.name_of_start = "tmp"; //StateDecl->getStateMachineInitialStateAsString()
-	    llvm::errs() << "Found state_machine " << sc.name << "\n";
+	    sc.name = RecordDecl->getQualifiedNameAsString();
+	    sc.name_of_start = "tmp"; //RecordDecl->getStateMachineInitialStateAsString()
+	    Diag(RecordDecl->getLocStart(), diag_found_statemachine) << sc.name;
 	}
-	else if (StateDecl->isDerivedFrom("boost::statechart::event"))
+	else if (RecordDecl->isDerivedFrom("boost::statechart::event"))
 	{
-	    sc.events.push_back(StateDecl->getNameAsString());
+	    sc.events.push_back(RecordDecl->getNameAsString());
 	}
 	return true;
     }
@@ -176,8 +188,9 @@ class VisualizeStatechartConsumer : public clang::ASTConsumer
     Visitor visitor;
     string destFileName;
 public:
-    explicit VisualizeStatechartConsumer(ASTContext *Context, std::string destFileName)
-	: visitor(Context, statechart), destFileName(destFileName) {}
+    explicit VisualizeStatechartConsumer(ASTContext *Context, std::string destFileName,
+					 DiagnosticsEngine &D)
+	: visitor(Context, statechart, D), destFileName(destFileName) {}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
 	visitor.TraverseDecl(Context.getTranslationUnitDecl());
@@ -192,7 +205,7 @@ protected:
     size_t dot = getCurrentFile().find_last_of('.');
     std::string dest = getCurrentFile().substr(0, dot);
     dest.append(".dot");
-    return new VisualizeStatechartConsumer(&CI.getASTContext(), dest);
+    return new VisualizeStatechartConsumer(&CI.getASTContext(), dest, CI.getDiagnostics());
   }
 
   bool ParseArgs(const CompilerInstance &CI,
