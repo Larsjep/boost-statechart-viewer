@@ -27,6 +27,7 @@
 
 //clang header files
 #include "clang/AST/ASTConsumer.h"
+#include "clang/AST/ASTContext.h"
 #include "clang/AST/CXXInheritance.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -56,12 +57,12 @@ public:
 	ofstream f(fn.c_str());
 	f << "digraph " << name << " {\n";
 	f << "  " << name_of_start << " [peripheries=2]\n";
-	for (string& s : states) {
-	    f << "  " << s << "\n";
+	for (list<string>::iterator s = states.begin(), e = states.end(); s != e; ++s) {
+	    f << "  " << *s << "\n";
 	}
 
-	for (Transition &t : transitions) {
-	    f << t.src << " -> " << t.dst << " [label = \"" << t.event << "\"]\n";
+	for (list<Transition>::iterator t = transitions.begin(), e = transitions.end(); t != e; ++t) {
+	    f << t->src << " -> " << t->dst << " [label = \"" << t->event << "\"]\n";
 	}
 
 	f << "}";

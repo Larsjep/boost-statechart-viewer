@@ -10,4 +10,4 @@ CLANG_LIBS := -lclangParse -lclangFrontend -lclangSerialization	\
  -lclangRewrite -lclangAST -lclangLex -lclangBasic -lclangEdit
 
 visualizer.so: visualizer.cpp
-	$(CXX) -g -fno-rtti -shared -Wall --std=c++11 $(CLANG_LIBS) $(LLVM_FLAGS) -o $@ $<
+	$(CXX) -g -fno-rtti -shared -Wall $(CLANG_LIBS) $(LLVM_FLAGS) -o $@ $<
