@@ -55,6 +55,7 @@ public:
     {
 	ofstream f(fn.c_str());
 	f << "digraph " << name << " {\n";
+	f << "  " << name_of_start << " [peripheries=2]\n";
 	for (string& s : states) {
 	    f << "  " << s << "\n";
 	}
@@ -74,18 +75,22 @@ class MyCXXRecordDecl : public CXXRecordDecl
 				    CXXBasePath &Path,
 				    void *qualName)
     {
-	string qn(static_cast<const char*>(qualName));
-	const RecordType *rt = Specifier->getType()->getAs<RecordType>();
-	assert(rt);
-	TagDecl *canon = rt->getDecl()->getCanonicalDecl();
-	return canon->getQualifiedNameAsString() == qn;
+        string qn(static_cast<const char*>(qualName));
+        const RecordType *rt = Specifier->getType()->getAs<RecordType>();
+        assert(rt);
+        TagDecl *canon = rt->getDecl()->getCanonicalDecl();
+        return canon->getQualifiedNameAsString() == qn;
     }
 
 public:
-    bool isDerivedFrom(const char *baseStr) const {
-	CXXBasePaths Paths(/*FindAmbiguities=*/false, /*RecordPaths=*/false, /*DetectVirtual=*/false);
+    bool isDerivedFrom(const char *baseStr, CXXBaseSpecifier const **Base = 0) const {
+	CXXBasePaths Paths(/*FindAmbiguities=*/false, /*RecordPaths=*/!!Base, /*DetectVirtual=*/false);
 	Paths.setOrigin(const_cast<MyCXXRecordDecl*>(this));
-	return lookupInBases(&FindBaseClassString, const_cast<char*>(baseStr), Paths);
+	if (!lookupInBases(&FindBaseClassString, const_cast<char*>(baseStr), Paths))
+	    return false;
+	if (Base)
+	    *Base = Paths.front().back().Base;
+	return true;
     }
 };
 
@@ -155,6 +160,7 @@ public:
 	    return true;
 
 	MyCXXRecordDecl *RecordDecl = static_cast<MyCXXRecordDecl*>(Declaration);
+	const CXXBaseSpecifier *Base;
 
 	if (RecordDecl->isDerivedFrom("boost::statechart::simple_state"))
 	{
@@ -167,11 +173,16 @@ public:
 		 Reactions.first != Reactions.second; ++Reactions.first)
 		HandleReaction(*Reactions.first, RecordDecl);
 	}
-	else if (RecordDecl->isDerivedFrom("boost::statechart::state_machine"))
+	else if (RecordDecl->isDerivedFrom("boost::statechart::state_machine", &Base))
 	{
 	    sc.name = RecordDecl->getQualifiedNameAsString();
-	    sc.name_of_start = "tmp"; //RecordDecl->getStateMachineInitialStateAsString()
 	    Diag(RecordDecl->getLocStart(), diag_found_statemachine) << sc.name;
+
+	    if (const ElaboratedType *ET = dyn_cast<ElaboratedType>(Base->getType())) {
+		if (const TemplateSpecializationType *TST = dyn_cast<TemplateSpecializationType>(ET->getNamedType())) {
+		    sc.name_of_start = TST->getArg(1).getAsType()->getAsCXXRecordDecl()->getName();
+		}
+	    }
 	}
 	else if (RecordDecl->isDerivedFrom("boost::statechart::event"))
 	{
