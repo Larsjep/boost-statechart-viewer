@@ -1,10 +1,13 @@
+-include ../Makefile.config
+
 .PHONY: all
 all: test.pdf StopWatch.pdf main.pdf
 
+CLANG++ ?= clang++
 VISUALIZER = -Xclang -load -Xclang ../src/visualizer.so -Xclang -plugin -Xclang visualize-statechart
 
 %.o %.dot: %.cpp ../src/visualizer.so
-	clang++ $(VISUALIZER) -c -o $(<:.cpp=.o) $<
+	$(CLANG++) $(VISUALIZER) -c -o $(<:.cpp=.o) $<
 
 %.eps: %.dot
 	dot -Tps $< > $@
@@ -14,4 +17,3 @@ VISUALIZER = -Xclang -load -Xclang ../src/visualizer.so -Xclang -plugin -Xclang 
 
 ../src/visualizer:
 	$(MAKE) -C ../src
-
