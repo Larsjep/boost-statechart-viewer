@@ -245,6 +245,7 @@ public:
 
     void HandleReaction(const Type *T, const SourceLocation Loc, CXXRecordDecl *SrcState)
     {
+	// TODO: Improve Loc tracking
 	if (const ElaboratedType *ET = dyn_cast<ElaboratedType>(T))
 	    HandleReaction(ET->getNamedType().getTypePtr(), Loc, SrcState);
 	else if (const TemplateSpecializationType *TST = dyn_cast<TemplateSpecializationType>(T)) {
@@ -260,8 +261,8 @@ public:
 	    } else if (name == "boost::mpl::list") {
 		for (TemplateSpecializationType::iterator Arg = TST->begin(), End = TST->end(); Arg != End; ++Arg)
 		    HandleReaction(Arg->getAsType().getTypePtr(), Loc, SrcState);
-	    }
-	    //->getDecl()->getQualifiedNameAsString();
+	    } else
+		Diag(Loc, diag_unhandled_reaction_type) << name;
 	} else
 	    Diag(Loc, diag_unhandled_reaction_type) << T->getTypeClassName();
     }
@@ -306,6 +307,7 @@ public:
 	    Model::Context *c = model.findContext(Context->getName());
 	    if (c)
 		c->add(state);
+	    // TODO: else
 
 	    if (CXXRecordDecl *InnerInitialState = getTemplateArgDecl(Base->getType().getTypePtr(), 2))
 		state->setInitialInnerState(InnerInitialState->getName());
