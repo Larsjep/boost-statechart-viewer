@@ -19,7 +19,9 @@
 ////////////////////////////////////////////////////////////////////////////////////////
 
 //standard header files
+#include <iomanip>
 #include <fstream>
+#include <map>
 
 //LLVM Header files
 #include "llvm/Support/raw_ostream.h"
@@ -36,37 +38,156 @@
 using namespace clang;
 using namespace std;
 
-class Statechart
+namespace Model
 {
-public:
+
+    inline int getIndentLevelIdx() {
+	static int i = ios_base::xalloc();
+	return i;
+    }
+
+    ostream& indent(ostream& os) { os << setw(2*os.iword(getIndentLevelIdx())) << ""; return os; }
+    ostream& indent_inc(ostream& os) { os.iword(getIndentLevelIdx())++; return os; }
+    ostream& indent_dec(ostream& os) { os.iword(getIndentLevelIdx())--; return os; }
+
+    class State;
+
+    class Context : public map<string, State*> {
+    public:
+	iterator add(State *state);
+	Context *findContext(const string &name);
+    };
+
+    class State : public Context
+    {
+	string initialInnerState;
+    public:
+	const string name;
+	explicit State(string name) : name(name) {}
+	void setInitialInnerState(string name) { initialInnerState = name; }
+	friend ostream& operator<<(ostream& os, const State& s);
+    };
+
+
+    Context::iterator Context::add(State *state)
+    {
+	pair<iterator, bool> ret =  insert(value_type(state->name, state));
+	return ret.first;
+    }
+
+    Context *Context::findContext(const string &name)
+    {
+	iterator i = find(name), e;
+	if (i != end())
+	    return i->second;
+	for (i = begin(), e = end(); i != e; ++i) {
+	    Context *c = i->second->findContext(name);
+	    if (c)
+		return c;
+	}
+	return 0;
+    }
+
+
+    ostream& operator<<(ostream& os, const Context& c);
+
+    ostream& operator<<(ostream& os, const State& s)
+    {
+	if (s.size()) {
+	    os << indent << "subgraph cluster_" << s.name << " {\n" << indent_inc;
+	    os << indent << "label = \"" << s.name << "\"\n";
+	}
+	os << indent << "" << s.name << "\n";
+	if (s.size()) {
+	    os << indent << s.initialInnerState << " [peripheries=2]\n";
+	    os << static_cast<Context>(s);
+	    os << indent_dec << indent << "}\n";
+	}
+	return os;
+    }
+
+
+    ostream& operator<<(ostream& os, const Context& c)
+    {
+	for (Context::const_iterator i = c.begin(), e = c.end(); i != e; i++) {
+	    os << *i->second;
+	}
+	return os;
+    }
+
+
     class Transition
     {
     public:
-	string src, dst, event;
+	const string src, dst, event;
 	Transition(string src, string dst, string event) : src(src), dst(dst), event(event) {}
     };
-    string name;
-    string name_of_start;
-    list<Transition> transitions;
-    list<string> cReactions; /** list of custom reactions. After all files are traversed this list should be empty. */
-    list<string> events;
-    list<string> states;
 
-    void write_dot_file(string fn)
+    ostream& operator<<(ostream& os, const Transition& t)
     {
-	ofstream f(fn.c_str());
-	f << "digraph " << name << " {\n";
-	f << "  " << name_of_start << " [peripheries=2]\n";
-	for (list<string>::iterator s = states.begin(), e = states.end(); s != e; ++s) {
-	    f << "  " << *s << "\n";
-	}
-
-	for (list<Transition>::iterator t = transitions.begin(), e = transitions.end(); t != e; ++t) {
-	    f << t->src << " -> " << t->dst << " [label = \"" << t->event << "\"]\n";
-	}
-
-	f << "}";
+	os << indent << t.src << " -> " << t.dst << " [label = \"" << t.event << "\"]\n";
+	return os;
     }
+
+
+    class Machine : public Context
+    {
+    protected:
+	string initial_state;
+    public:
+	const string name;
+	explicit Machine(string name) : name(name) {}
+
+	void setInitialState(string name) { initial_state = name; }
+
+	friend ostream& operator<<(ostream& os, const Machine& m);
+    };
+
+    ostream& operator<<(ostream& os, const Machine& m)
+    {
+	os << indent << "subgraph " << m.name << " {\n" << indent_inc;
+	os << indent << m.initial_state << " [peripheries=2]\n";
+	os << static_cast<Context>(m);
+	os << indent_dec << indent << "}\n";
+	return os;
+    }
+
+
+    class Model : public map<string, Machine>
+    {
+    public:
+	list< Transition*> transitions;
+
+	iterator add(const Machine &m)
+	{
+	    pair<iterator, bool> ret =  insert(value_type(m.name, m));
+	    return ret.first;
+	}
+
+	Context *findContext(const string &name)
+	{
+	    iterator i = find(name), e;
+	    if (i != end())
+		return &i->second;
+	    for (i = begin(), e = end(); i != e; ++i) {
+		Context *c = i->second.findContext(name);
+		if (c)
+		    return c;
+	    }
+	    return 0;
+	}
+
+	void write_as_dot_file(string fn)
+	{
+	    ofstream f(fn.c_str());
+	    f << "digraph statecharts {\n" << indent_inc;
+	    for (iterator i = begin(), e = end(); i != e; i++)
+		f << i->second;
+	    for (list<Transition*>::iterator t = transitions.begin(), e = transitions.end(); t != e; ++t)
+		f << **t;
+	    f << indent_dec << "}\n";
+	}
+    };
 };
 
 
@@ -98,8 +219,8 @@ public:
 
 class Visitor : public RecursiveASTVisitor<Visitor>
 {
-    ASTContext *Context;
-    Statechart &sc;
+    ASTContext *ASTCtx;
+    Model::Model &model;
     DiagnosticsEngine &Diags;
     unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
 	diag_found_state, diag_found_statemachine;
@@ -107,8 +228,8 @@ class Visitor : public RecursiveASTVisitor<Visitor>
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
 
-    explicit Visitor(ASTContext *Context, Statechart &sc, DiagnosticsEngine &Diags)
-	: Context(Context), sc(sc), Diags(Diags)
+    explicit Visitor(ASTContext *Context, Model::Model &model, DiagnosticsEngine &Diags)
+	: ASTCtx(Context), model(model), Diags(Diags)
     {
 	diag_found_statemachine =
 	    Diags.getCustomDiagID(DiagnosticsEngine::Note, "Found statemachine '%0'");
@@ -134,8 +255,8 @@ public:
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
 		CXXRecordDecl *DstState = DstStateType->getAsCXXRecordDecl();
 
-		sc.transitions.push_back(Statechart::Transition(SrcState->getName(), DstState->getName(),
-								Event->getName()));
+		Model::Transition *T = new Model::Transition(SrcState->getName(), DstState->getName(), Event->getName());
+		model.transitions.push_back(T);
 	    } else if (name == "boost::mpl::list") {
 		for (TemplateSpecializationType::iterator Arg = TST->begin(), End = TST->end(); Arg != End; ++Arg)
 		    HandleReaction(Arg->getAsType().getTypePtr(), Loc, SrcState);
@@ -154,6 +275,17 @@ public:
 	    Diag(Decl->getLocation(), diag_unhandled_reaction_decl) << Decl->getDeclKindName();
     }
 
+    CXXRecordDecl *getTemplateArgDecl(const Type *T, unsigned ArgNum)
+    {
+	if (const ElaboratedType *ET = dyn_cast<ElaboratedType>(T))
+	    return getTemplateArgDecl(ET->getNamedType().getTypePtr(), ArgNum);
+	else if (const TemplateSpecializationType *TST = dyn_cast<TemplateSpecializationType>(T)) {
+	    if (TST->getNumArgs() >= ArgNum+1)
+		return TST->getArg(ArgNum).getAsType()->getAsCXXRecordDecl();
+	}
+	return 0;
+    }
+
 
     bool VisitCXXRecordDecl(CXXRecordDecl *Declaration)
     {
@@ -163,13 +295,22 @@ public:
 	MyCXXRecordDecl *RecordDecl = static_cast<MyCXXRecordDecl*>(Declaration);
 	const CXXBaseSpecifier *Base;
 
-	if (RecordDecl->isDerivedFrom("boost::statechart::simple_state"))
+	if (RecordDecl->isDerivedFrom("boost::statechart::simple_state", &Base))
 	{
-	    string state(RecordDecl->getName()); //getQualifiedNameAsString());
-	    Diag(RecordDecl->getLocStart(), diag_found_state) << state;
-	    sc.states.push_back(state);
+	    string name(RecordDecl->getName()); //getQualifiedNameAsString());
+	    Diag(RecordDecl->getLocStart(), diag_found_state) << name;
 
-	    IdentifierInfo& II = Context->Idents.get("reactions");
+	    Model::State *state = new Model::State(name);
+
+	    CXXRecordDecl *Context = getTemplateArgDecl(Base->getType().getTypePtr(), 1);
+	    Model::Context *c = model.findContext(Context->getName());
+	    if (c)
+		c->add(state);
+
+	    if (CXXRecordDecl *InnerInitialState = getTemplateArgDecl(Base->getType().getTypePtr(), 2))
+		state->setInitialInnerState(InnerInitialState->getName());
+
+	    IdentifierInfo& II = ASTCtx->Idents.get("reactions");
 	    // TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
 	    for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
 		 Reactions.first != Reactions.second; ++Reactions.first)
@@ -177,18 +318,16 @@ public:
 	}
 	else if (RecordDecl->isDerivedFrom("boost::statechart::state_machine", &Base))
 	{
-	    sc.name = RecordDecl->getQualifiedNameAsString();
-	    Diag(RecordDecl->getLocStart(), diag_found_statemachine) << sc.name;
+	    Model::Machine m(RecordDecl->getName());
+	    Diag(RecordDecl->getLocStart(), diag_found_statemachine) << m.name;
 
-	    if (const ElaboratedType *ET = dyn_cast<ElaboratedType>(Base->getType())) {
-		if (const TemplateSpecializationType *TST = dyn_cast<TemplateSpecializationType>(ET->getNamedType())) {
-		    sc.name_of_start = TST->getArg(1).getAsType()->getAsCXXRecordDecl()->getName();
-		}
-	    }
+	    if (CXXRecordDecl *InitialState = getTemplateArgDecl(Base->getType().getTypePtr(), 1))
+		m.setInitialState(InitialState->getName());
+	    model.add(m);
 	}
 	else if (RecordDecl->isDerivedFrom("boost::statechart::event"))
 	{
-	    sc.events.push_back(RecordDecl->getNameAsString());
+	    //sc.events.push_back(RecordDecl->getNameAsString());
 	}
 	return true;
     }
@@ -197,17 +336,17 @@ public:
 
 class VisualizeStatechartConsumer : public clang::ASTConsumer
 {
-    Statechart statechart;
+    Model::Model model;
     Visitor visitor;
     string destFileName;
 public:
     explicit VisualizeStatechartConsumer(ASTContext *Context, std::string destFileName,
 					 DiagnosticsEngine &D)
-	: visitor(Context, statechart, D), destFileName(destFileName) {}
+	: visitor(Context, model, D), destFileName(destFileName) {}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
 	visitor.TraverseDecl(Context.getTranslationUnitDecl());
-	statechart.write_dot_file(destFileName);
+	model.write_as_dot_file(destFileName);
     }
 };
 
