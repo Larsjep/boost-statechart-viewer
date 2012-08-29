@@ -277,6 +277,18 @@ public:
 
 		Model::Transition *T = new Model::Transition(SrcState->getName(), DstState->getName(), Event->getName());
 		model.transitions.push_back(T);
+	    } else if (name == "boost::statechart::custom_reaction") {
+		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
+		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
+
+		Model::Transition *T = new Model::Transition(SrcState->getName(), "\"???\"", Event->getName());
+		model.transitions.push_back(T);
+	    } else if (name == "boost::statechart::deferral") {
+		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
+		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
+
+		Model::Transition *T = new Model::Transition(SrcState->getName(), "\"??? deferral\"", Event->getName());
+		model.transitions.push_back(T);
 	    } else if (name == "boost::mpl::list") {
 		for (TemplateSpecializationType::iterator Arg = TST->begin(), End = TST->end(); Arg != End; ++Arg)
 		    HandleReaction(Arg->getAsType().getTypePtr(), Loc, SrcState);
