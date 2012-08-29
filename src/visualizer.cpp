@@ -155,6 +155,7 @@ namespace Model
 
     class Model : public map<string, Machine>
     {
+	Context unknown;	// For forward-declared state classes
     public:
 	list< Transition*> transitions;
 
@@ -164,8 +165,17 @@ namespace Model
 	    return ret.first;
 	}
 
+	void addUnknownState(State *m)
+	{
+	    unknown[m->name] = m;
+	}
+
+
 	Context *findContext(const string &name)
 	{
+	    Context::iterator ci = unknown.find(name);
+	    if (ci != unknown.end())
+		return ci->second;
 	    iterator i = find(name), e;
 	    if (i != end())
 		return &i->second;
@@ -175,6 +185,15 @@ namespace Model
 		    return c;
 	    }
 	    return 0;
+	}
+
+	State *removeFromUnknownContexts(const string &name)
+	{
+	    Context::iterator ci = unknown.find(name);
+	    if (ci == unknown.end())
+		return 0;
+	    unknown.erase(ci);
+	    return ci->second;
 	}
 
 	void write_as_dot_file(string fn)
@@ -301,13 +320,20 @@ public:
 	    string name(RecordDecl->getName()); //getQualifiedNameAsString());
 	    Diag(RecordDecl->getLocStart(), diag_found_state) << name;
 
-	    Model::State *state = new Model::State(name);
+	    Model::State *state;
+	    // Either we saw a reference to forward declared state
+	    // before, or we create a new state.
+	    if (!(state = model.removeFromUnknownContexts(name)))
+		state = new Model::State(name);
 
 	    CXXRecordDecl *Context = getTemplateArgDecl(Base->getType().getTypePtr(), 1);
 	    Model::Context *c = model.findContext(Context->getName());
-	    if (c)
-		c->add(state);
-	    // TODO: else
+	    if (!c) {
+		Model::State *s = new Model::State(Context->getName());
+		model.addUnknownState(s);
+		c = s;
+	    }
+	    c->add(state);
 
 	    if (CXXRecordDecl *InnerInitialState = getTemplateArgDecl(Base->getType().getTypePtr(), 2))
 		state->setInitialInnerState(InnerInitialState->getName());
