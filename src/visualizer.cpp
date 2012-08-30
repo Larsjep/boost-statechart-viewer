@@ -93,12 +93,11 @@ namespace Model
 
     ostream& operator<<(ostream& os, const State& s)
     {
-	if (s.size()) {
-	    os << indent << "subgraph cluster_" << s.name << " {\n" << indent_inc;
-	    os << indent << "label = \"" << s.name << "\"\n";
-	}
 	os << indent << "" << s.name << "\n";
 	if (s.size()) {
+	    os << indent << s.name << " -> " << s.initialInnerState << " [style = dashed]\n";
+	    os << indent << "subgraph cluster_" << s.name << " {\n" << indent_inc;
+	    os << indent << "label = \"" << s.name << "\"\n";
 	    os << indent << s.initialInnerState << " [peripheries=2]\n";
 	    os << static_cast<Context>(s);
 	    os << indent_dec << indent << "}\n";
@@ -242,7 +241,7 @@ class Visitor : public RecursiveASTVisitor<Visitor>
     Model::Model &model;
     DiagnosticsEngine &Diags;
     unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
-	diag_found_state, diag_found_statemachine;
+	diag_found_state, diag_found_statemachine, diag_no_history;
 
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
@@ -258,6 +257,8 @@ public:
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Unhandled reaction type '%0'");
 	diag_unhandled_reaction_decl =
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Unhandled reaction decl '%0'");
+	diag_unhandled_reaction_decl =
+	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "History is not yet supported");
     }
 
     DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID) { return Diags.Report(Loc, DiagID); }
@@ -281,7 +282,7 @@ public:
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
 
-		Model::Transition *T = new Model::Transition(SrcState->getName(), "\"???\"", Event->getName());
+		Model::Transition *T = new Model::Transition(SrcState->getName(), "\"??? custom\"", Event->getName());
 		model.transitions.push_back(T);
 	    } else if (name == "boost::statechart::deferral") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
@@ -349,6 +350,9 @@ public:
 
 	    if (CXXRecordDecl *InnerInitialState = getTemplateArgDecl(Base->getType().getTypePtr(), 2))
 		state->setInitialInnerState(InnerInitialState->getName());
+
+// 	    if (CXXRecordDecl *History = getTemplateArgDecl(Base->getType().getTypePtr(), 3))
+// 		Diag(History->getLocStart(), diag_no_history);
 
 	    IdentifierInfo& II = ASTCtx->Idents.get("reactions");
 	    // TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
