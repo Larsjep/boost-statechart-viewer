@@ -234,6 +234,28 @@ public:
     }
 };
 
+class FindTransitVisitor : public RecursiveASTVisitor<FindTransitVisitor>
+{
+    Model::Model &model;
+    const CXXRecordDecl *SrcState;
+    const Type *EventType;
+public:
+    explicit FindTransitVisitor(Model::Model &model, const CXXRecordDecl *SrcState, const Type *EventType)
+	: model(model), SrcState(SrcState), EventType(EventType) {}
+
+    bool VisitMemberExpr(MemberExpr *E) {
+	if (E->getMemberNameInfo().getAsString() != "transit")
+	    return true;
+	if (E->hasExplicitTemplateArgs()) {
+	    const Type *DstStateType = E->getExplicitTemplateArgs()[0].getArgument().getAsType().getTypePtr();
+	    CXXRecordDecl *DstState = DstStateType->getAsCXXRecordDecl();
+	    CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
+	    Model::Transition *T = new Model::Transition(SrcState->getName(), DstState->getName(), Event->getName());
+	    model.transitions.push_back(T);
+	}
+	return true;
+    }
+};
 
 class Visitor : public RecursiveASTVisitor<Visitor>
 {
@@ -263,6 +285,23 @@ public:
 
     DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID) { return Diags.Report(Loc, DiagID); }
 
+    void HandleCustomReaction(const CXXRecordDecl *SrcState, const Type *EventType)
+    {
+	IdentifierInfo& II = ASTCtx->Idents.get("react");
+	// TODO: Lookup for react even in base classes - probably by using Sema::LookupQualifiedName()
+	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
+	     ReactRes.first != ReactRes.second; ++ReactRes.first) {
+	    if (CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first))
+		if (const ParmVarDecl *p = React->getParamDecl(0)) {
+		    const Type *ParmType = p->getType().getTypePtr();
+		    if (ParmType->isLValueReferenceType())
+			ParmType = dyn_cast<LValueReferenceType>(ParmType)->getPointeeType().getTypePtr();
+		    if (ParmType == EventType)
+			FindTransitVisitor(model, SrcState, EventType).TraverseStmt(React->getBody());
+		}
+	}
+    }
+
     void HandleReaction(const Type *T, const SourceLocation Loc, CXXRecordDecl *SrcState)
     {
 	// TODO: Improve Loc tracking
@@ -280,10 +319,7 @@ public:
 		model.transitions.push_back(T);
 	    } else if (name == "boost::statechart::custom_reaction") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
-		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
-
-		Model::Transition *T = new Model::Transition(SrcState->getName(), "\"??? custom\"", Event->getName());
-		model.transitions.push_back(T);
+		HandleCustomReaction(SrcState, EventType);
 	    } else if (name == "boost::statechart::deferral") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
@@ -337,6 +373,7 @@ public:
 	    // Either we saw a reference to forward declared state
 	    // before, or we create a new state.
 	    if (!(state = model.removeFromUnknownContexts(name)))
+		// TODO: Fix the value of name
 		state = new Model::State(name);
 
 	    CXXRecordDecl *Context = getTemplateArgDecl(Base->getType().getTypePtr(), 1);
