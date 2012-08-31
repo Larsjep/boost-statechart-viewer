@@ -61,10 +61,12 @@ namespace Model
     class State : public Context
     {
 	string initialInnerState;
+	list<string> defferedEvents;
     public:
 	const string name;
 	explicit State(string name) : name(name) {}
 	void setInitialInnerState(string name) { initialInnerState = name; }
+	void addDeferredEvent(const string &name) { defferedEvents.push_back(name); }
 	friend ostream& operator<<(ostream& os, const State& s);
     };
 
@@ -88,12 +90,14 @@ namespace Model
 	return 0;
     }
 
-
     ostream& operator<<(ostream& os, const Context& c);
 
     ostream& operator<<(ostream& os, const State& s)
     {
-	os << indent << "" << s.name << "\n";
+	string label = s.name;
+	for (list<string>::const_iterator i = s.defferedEvents.begin(), e = s.defferedEvents.end(); i != e; ++i)
+	    label.append("<br />").append(*i).append(" / defer");
+	os << indent << s.name << " [label=<" << label << ">]\n";
 	if (s.size()) {
 	    os << indent << s.name << " -> " << s.initialInnerState << " [style = dashed]\n";
 	    os << indent << "subgraph cluster_" << s.name << " {\n" << indent_inc;
@@ -185,6 +189,17 @@ namespace Model
 	    }
 	    return 0;
 	}
+
+	State *findState(const string &name)
+	{
+	    for (iterator i = begin(), e = end(); i != e; ++i) {
+		Context *c = i->second.findContext(name);
+		if (c)
+		    return static_cast<State*>(c);
+	    }
+	    return 0;
+	}
+
 
 	State *removeFromUndefinedContexts(const string &name)
 	{
@@ -324,8 +339,9 @@ public:
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
 
-		Model::Transition *T = new Model::Transition(SrcState->getName(), "\"??? deferral\"", Event->getName());
-		model.transitions.push_back(T);
+		Model::State *s = model.findState(SrcState->getName());
+		assert(s);
+		s->addDeferredEvent(Event->getName());
 	    } else if (name == "boost::mpl::list") {
 		for (TemplateSpecializationType::iterator Arg = TST->begin(), End = TST->end(); Arg != End; ++Arg)
 		    HandleReaction(Arg->getAsType().getTypePtr(), Loc, SrcState);
