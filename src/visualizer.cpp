@@ -360,6 +360,8 @@ public:
     {
 	if (!Declaration->isCompleteDefinition())
 	    return true;
+	if (Declaration->getQualifiedNameAsString() == "boost::statechart::state")
+	    return true; // This is an "abstract class" not a real state
 
 	MyCXXRecordDecl *RecordDecl = static_cast<MyCXXRecordDecl*>(Declaration);
 	const CXXBaseSpecifier *Base;
@@ -373,7 +375,6 @@ public:
 	    // Either we saw a reference to forward declared state
 	    // before, or we create a new state.
 	    if (!(state = model.removeFromUndefinedContexts(name)))
-		// TODO: Fix the value of name
 		state = new Model::State(name);
 
 	    CXXRecordDecl *Context = getTemplateArgDecl(Base->getType().getTypePtr(), 1);
