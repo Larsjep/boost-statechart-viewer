@@ -154,7 +154,7 @@ namespace Model
 
     class Model : public map<string, Machine>
     {
-	Context unknown;	// For forward-declared state classes
+	Context undefined;	// For forward-declared state classes
     public:
 	list< Transition*> transitions;
 
@@ -166,14 +166,14 @@ namespace Model
 
 	void addUndefinedState(State *m)
 	{
-	    unknown[m->name] = m;
+	    undefined[m->name] = m;
 	}
 
 
 	Context *findContext(const string &name)
 	{
-	    Context::iterator ci = unknown.find(name);
-	    if (ci != unknown.end())
+	    Context::iterator ci = undefined.find(name);
+	    if (ci != undefined.end())
 		return ci->second;
 	    iterator i = find(name), e;
 	    if (i != end())
@@ -188,10 +188,10 @@ namespace Model
 
 	State *removeFromUndefinedContexts(const string &name)
 	{
-	    Context::iterator ci = unknown.find(name);
-	    if (ci == unknown.end())
+	    Context::iterator ci = undefined.find(name);
+	    if (ci == undefined.end())
 		return 0;
-	    unknown.erase(ci);
+	    undefined.erase(ci);
 	    return ci->second;
 	}
 
