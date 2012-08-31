@@ -164,7 +164,7 @@ namespace Model
 	    return ret.first;
 	}
 
-	void addUnknownState(State *m)
+	void addUndefinedState(State *m)
 	{
 	    unknown[m->name] = m;
 	}
@@ -186,7 +186,7 @@ namespace Model
 	    return 0;
 	}
 
-	State *removeFromUnknownContexts(const string &name)
+	State *removeFromUndefinedContexts(const string &name)
 	{
 	    Context::iterator ci = unknown.find(name);
 	    if (ci == unknown.end())
@@ -372,7 +372,7 @@ public:
 	    Model::State *state;
 	    // Either we saw a reference to forward declared state
 	    // before, or we create a new state.
-	    if (!(state = model.removeFromUnknownContexts(name)))
+	    if (!(state = model.removeFromUndefinedContexts(name)))
 		// TODO: Fix the value of name
 		state = new Model::State(name);
 
@@ -380,7 +380,7 @@ public:
 	    Model::Context *c = model.findContext(Context->getName());
 	    if (!c) {
 		Model::State *s = new Model::State(Context->getName());
-		model.addUnknownState(s);
+		model.addUndefinedState(s);
 		c = s;
 	    }
 	    c->add(state);
