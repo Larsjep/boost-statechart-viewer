@@ -1,7 +1,7 @@
 -include ../Makefile.config
 
 .PHONY: all
-all: test.pdf StopWatch.pdf main.pdf Camera/Main.pdf
+all: test.pdf StopWatch.pdf main.pdf Camera/Main.pdf Keyboard.pdf
 
 CLANG++ ?= $(shell $(LLVM_CONFIG) --bindir)/clang++
 ifeq ($(wildcard $(CLANG++)),)
