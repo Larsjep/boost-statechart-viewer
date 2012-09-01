@@ -278,7 +278,7 @@ class Visitor : public RecursiveASTVisitor<Visitor>
     Model::Model &model;
     DiagnosticsEngine &Diags;
     unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
-	diag_found_state, diag_found_statemachine, diag_no_history;
+	diag_found_state, diag_found_statemachine, diag_no_history, diag_warning;
 
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
@@ -296,6 +296,8 @@ public:
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Unhandled reaction decl '%0'");
 	diag_unhandled_reaction_decl =
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "History is not yet supported");
+	diag_warning =
+	    Diags.getCustomDiagID(DiagnosticsEngine::Warning, "'%0' %1");
     }
 
     DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID) { return Diags.Report(Loc, DiagID); }
@@ -360,17 +362,22 @@ public:
 	    Diag(Decl->getLocation(), diag_unhandled_reaction_decl) << Decl->getDeclKindName();
     }
 
-    CXXRecordDecl *getTemplateArgDecl(const Type *T, unsigned ArgNum)
+    CXXRecordDecl *getTemplateArgDecl(const Type *T, unsigned ArgNum, const SourceLocation Loc)
     {
 	if (const ElaboratedType *ET = dyn_cast<ElaboratedType>(T))
-	    return getTemplateArgDecl(ET->getNamedType().getTypePtr(), ArgNum);
+	    return getTemplateArgDecl(ET->getNamedType().getTypePtr(), ArgNum, Loc);
 	else if (const TemplateSpecializationType *TST = dyn_cast<TemplateSpecializationType>(T)) {
 	    if (TST->getNumArgs() >= ArgNum+1)
 		return TST->getArg(ArgNum).getAsType()->getAsCXXRecordDecl();
-	}
+	} else
+	    Diag(Loc, diag_warning) << T->getTypeClassName() << "type as template argument is not supported";
 	return 0;
     }
 
+    CXXRecordDecl *getTemplateArgDeclOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum) {
+	return getTemplateArgDecl(Base->getType().getTypePtr(), 1,
+				  Base->getTypeSourceInfo()->getTypeLoc().getLocStart());
+    }
 
     bool VisitCXXRecordDecl(CXXRecordDecl *Declaration)
     {
@@ -393,7 +400,7 @@ public:
 	    if (!(state = model.removeFromUndefinedContexts(name)))
 		state = new Model::State(name);
 
-	    CXXRecordDecl *Context = getTemplateArgDecl(Base->getType().getTypePtr(), 1);
+	    CXXRecordDecl *Context = getTemplateArgDeclOfBase(Base, 1);
 	    Model::Context *c = model.findContext(Context->getName());
 	    if (!c) {
 		Model::State *s = new Model::State(Context->getName());
@@ -402,8 +409,15 @@ public:
 	    }
 	    c->add(state);
 
-	    if (CXXRecordDecl *InnerInitialState = getTemplateArgDecl(Base->getType().getTypePtr(), 2))
-		state->setInitialInnerState(InnerInitialState->getName());
+	    if (MyCXXRecordDecl *InnerInitialState =
+		static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 2))) {
+		if (InnerInitialState->isDerivedFrom("boost::statechart::simple_state") ||
+		    InnerInitialState->isDerivedFrom("boost::statechart::state_machine"))
+		    state->setInitialInnerState(InnerInitialState->getName());
+		else
+		    Diag(Base->getTypeSourceInfo()->getTypeLoc().getLocStart(), diag_warning)
+			<< InnerInitialState->getQualifiedNameAsString() << " as inner initial state is not supported";
+	    }
 
 // 	    if (CXXRecordDecl *History = getTemplateArgDecl(Base->getType().getTypePtr(), 3))
 // 		Diag(History->getLocStart(), diag_no_history);
@@ -419,7 +433,8 @@ public:
 	    Model::Machine m(RecordDecl->getName());
 	    Diag(RecordDecl->getLocStart(), diag_found_statemachine) << m.name;
 
-	    if (CXXRecordDecl *InitialState = getTemplateArgDecl(Base->getType().getTypePtr(), 1))
+	    if (MyCXXRecordDecl *InitialState =
+		static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 1)))
 		m.setInitialState(InitialState->getName());
 	    model.add(m);
 	}
