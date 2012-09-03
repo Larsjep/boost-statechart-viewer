@@ -308,14 +308,20 @@ public:
 	// TODO: Lookup for react even in base classes - probably by using Sema::LookupQualifiedName()
 	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
 	     ReactRes.first != ReactRes.second; ++ReactRes.first) {
-	    if (CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first))
-		if (const ParmVarDecl *p = React->getParamDecl(0)) {
+	    if (CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first)) {
+		if (React->getNumParams() >= 1) {
+		    const ParmVarDecl *p = React->getParamDecl(0);
 		    const Type *ParmType = p->getType().getTypePtr();
 		    if (ParmType->isLValueReferenceType())
 			ParmType = dyn_cast<LValueReferenceType>(ParmType)->getPointeeType().getTypePtr();
 		    if (ParmType == EventType)
 			FindTransitVisitor(model, SrcState, EventType).TraverseStmt(React->getBody());
-		}
+		} else
+		    Diag(React->getLocStart(), diag_warning)
+			<< React << "has not a parameter";
+	    } else
+		Diag((*ReactRes.first)->getSourceRange().getBegin(), diag_warning)
+		    << (*ReactRes.first)->getDeclKindName() << "is not supported as react method";
 	}
     }
 
