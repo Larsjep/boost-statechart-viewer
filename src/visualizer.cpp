@@ -368,21 +368,95 @@ public:
 	    Diag(Decl->getLocation(), diag_unhandled_reaction_decl) << Decl->getDeclKindName();
     }
 
-    CXXRecordDecl *getTemplateArgDecl(const Type *T, unsigned ArgNum, const SourceLocation Loc)
+    TemplateArgumentLoc getTemplateArgLoc(const TypeLoc &T, unsigned ArgNum)
     {
-	if (const ElaboratedType *ET = dyn_cast<ElaboratedType>(T))
-	    return getTemplateArgDecl(ET->getNamedType().getTypePtr(), ArgNum, Loc);
-	else if (const TemplateSpecializationType *TST = dyn_cast<TemplateSpecializationType>(T)) {
-	    if (TST->getNumArgs() >= ArgNum+1)
-		return TST->getArg(ArgNum).getAsType()->getAsCXXRecordDecl();
+	if (const ElaboratedTypeLoc *ET = dyn_cast<ElaboratedTypeLoc>(&T))
+	    return getTemplateArgLoc(ET->getNamedTypeLoc(), ArgNum);
+	else if (const TemplateSpecializationTypeLoc *TST = dyn_cast<TemplateSpecializationTypeLoc>(&T)) {
+	    if (TST->getNumArgs() >= ArgNum+1) {
+		return TST->getArgLoc(ArgNum);
+	    } else
+		Diag(TST->getBeginLoc(), diag_warning) << TST->getType()->getTypeClassName() << "has not enough arguments" << TST->getSourceRange();
 	} else
-	    Diag(Loc, diag_warning) << T->getTypeClassName() << "type as template argument is not supported";
+	    Diag(T.getBeginLoc(), diag_warning) << T.getType()->getTypeClassName() << "type as template argument is not supported" << T.getSourceRange();
+	return TemplateArgumentLoc();
+    }
+
+    TemplateArgumentLoc getTemplateArgLocOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum) {
+	return getTemplateArgLoc(Base->getTypeSourceInfo()->getTypeLoc(), 1);
+    }
+
+    CXXRecordDecl *getTemplateArgDeclOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum, TemplateArgumentLoc &Loc) {
+	Loc = getTemplateArgLocOfBase(Base, 1);
+	switch (Loc.getArgument().getKind()) {
+	case TemplateArgument::Type:
+	    return Loc.getTypeSourceInfo()->getType()->getAsCXXRecordDecl();
+	case TemplateArgument::Null:
+	    // Diag() was already called
+	    break;
+	default:
+	    Diag(Loc.getSourceRange().getBegin(), diag_warning) << Loc.getArgument().getKind() << "unsupported kind" << Loc.getSourceRange();
+	}
 	return 0;
     }
 
     CXXRecordDecl *getTemplateArgDeclOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum) {
-	return getTemplateArgDecl(Base->getType().getTypePtr(), 1,
-				  Base->getTypeSourceInfo()->getTypeLoc().getLocStart());
+	TemplateArgumentLoc Loc;
+	return getTemplateArgDeclOfBase(Base, ArgNum, Loc);
+    }
+
+    void handleSimpleState(CXXRecordDecl *RecordDecl, const CXXBaseSpecifier *Base)
+    {
+	string name(RecordDecl->getName()); //getQualifiedNameAsString());
+	Diag(RecordDecl->getLocStart(), diag_found_state) << name;
+
+	Model::State *state;
+	// Either we saw a reference to forward declared state
+	// before, or we create a new state.
+	if (!(state = model.removeFromUndefinedContexts(name)))
+	    state = new Model::State(name);
+
+	CXXRecordDecl *Context = getTemplateArgDeclOfBase(Base, 1);
+	if (Context) {
+	    Model::Context *c = model.findContext(Context->getName());
+	    if (!c) {
+		Model::State *s = new Model::State(Context->getName());
+		model.addUndefinedState(s);
+		c = s;
+	    }
+	    c->add(state);
+	}
+
+	TemplateArgumentLoc Loc;
+	if (MyCXXRecordDecl *InnerInitialState =
+	    static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 2, Loc))) {
+	    if (InnerInitialState->isDerivedFrom("boost::statechart::simple_state") ||
+		InnerInitialState->isDerivedFrom("boost::statechart::state_machine"))
+		state->setInitialInnerState(InnerInitialState->getName());
+	    else
+		Diag(Loc.getTypeSourceInfo()->getTypeLoc().getLocStart(), diag_warning)
+		    << InnerInitialState->getName() << " as inner initial state is not supported" << Loc.getSourceRange();
+	}
+
+// 	    if (CXXRecordDecl *History = getTemplateArgDecl(Base->getType().getTypePtr(), 3))
+// 		Diag(History->getLocStart(), diag_no_history);
+
+	IdentifierInfo& II = ASTCtx->Idents.get("reactions");
+	// TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
+	for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
+	     Reactions.first != Reactions.second; ++Reactions.first)
+	    HandleReaction(*Reactions.first, RecordDecl);
+    }
+
+    void handleStateMachine(CXXRecordDecl *RecordDecl, const CXXBaseSpecifier *Base)
+    {
+	Model::Machine m(RecordDecl->getName());
+	Diag(RecordDecl->getLocStart(), diag_found_statemachine) << m.name;
+
+	if (MyCXXRecordDecl *InitialState =
+	    static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 1)))
+	    m.setInitialState(InitialState->getName());
+	model.add(m);
     }
 
     bool VisitCXXRecordDecl(CXXRecordDecl *Declaration)
@@ -396,54 +470,9 @@ public:
 	const CXXBaseSpecifier *Base;
 
 	if (RecordDecl->isDerivedFrom("boost::statechart::simple_state", &Base))
-	{
-	    string name(RecordDecl->getName()); //getQualifiedNameAsString());
-	    Diag(RecordDecl->getLocStart(), diag_found_state) << name;
-
-	    Model::State *state;
-	    // Either we saw a reference to forward declared state
-	    // before, or we create a new state.
-	    if (!(state = model.removeFromUndefinedContexts(name)))
-		state = new Model::State(name);
-
-	    CXXRecordDecl *Context = getTemplateArgDeclOfBase(Base, 1);
-	    Model::Context *c = model.findContext(Context->getName());
-	    if (!c) {
-		Model::State *s = new Model::State(Context->getName());
-		model.addUndefinedState(s);
-		c = s;
-	    }
-	    c->add(state);
-
-	    if (MyCXXRecordDecl *InnerInitialState =
-		static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 2))) {
-		if (InnerInitialState->isDerivedFrom("boost::statechart::simple_state") ||
-		    InnerInitialState->isDerivedFrom("boost::statechart::state_machine"))
-		    state->setInitialInnerState(InnerInitialState->getName());
-		else
-		    Diag(Base->getTypeSourceInfo()->getTypeLoc().getLocStart(), diag_warning)
-			<< InnerInitialState->getQualifiedNameAsString() << " as inner initial state is not supported";
-	    }
-
-// 	    if (CXXRecordDecl *History = getTemplateArgDecl(Base->getType().getTypePtr(), 3))
-// 		Diag(History->getLocStart(), diag_no_history);
-
-	    IdentifierInfo& II = ASTCtx->Idents.get("reactions");
-	    // TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
-	    for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
-		 Reactions.first != Reactions.second; ++Reactions.first)
-		HandleReaction(*Reactions.first, RecordDecl);
-	}
+	    handleSimpleState(RecordDecl, Base);
 	else if (RecordDecl->isDerivedFrom("boost::statechart::state_machine", &Base))
-	{
-	    Model::Machine m(RecordDecl->getName());
-	    Diag(RecordDecl->getLocStart(), diag_found_statemachine) << m.name;
-
-	    if (MyCXXRecordDecl *InitialState =
-		static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 1)))
-		m.setInitialState(InitialState->getName());
-	    model.add(m);
-	}
+	    handleStateMachine(RecordDecl, Base);
 	else if (RecordDecl->isDerivedFrom("boost::statechart::event"))
 	{
 	    //sc.events.push_back(RecordDecl->getNameAsString());
