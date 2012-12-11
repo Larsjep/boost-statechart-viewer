@@ -443,6 +443,7 @@ public:
 
 	IdentifierInfo& II = ASTCtx->Idents.get("reactions");
 	// TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
+	// TODO: Find when state has no reactions
 	for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
 	     Reactions.first != Reactions.second; ++Reactions.first)
 	    HandleReaction(*Reactions.first, RecordDecl);
@@ -465,6 +466,11 @@ public:
 	    return true;
 	if (Declaration->getQualifiedNameAsString() == "boost::statechart::state")
 	    return true; // This is an "abstract class" not a real state
+	if (Declaration->getQualifiedNameAsString() == "TimedState")
+	    return true; // This is an "abstract class" not a real state
+	if (Declaration->getQualifiedNameAsString() == "TimedSimpleState")
+	    return true; // This is an "abstract class" not a real state
+
 
 	MyCXXRecordDecl *RecordDecl = static_cast<MyCXXRecordDecl*>(Declaration);
 	const CXXBaseSpecifier *Base;
