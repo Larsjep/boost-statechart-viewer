@@ -464,13 +464,10 @@ public:
     {
 	if (!Declaration->isCompleteDefinition())
 	    return true;
-	if (Declaration->getQualifiedNameAsString() == "boost::statechart::state")
+	if (Declaration->getQualifiedNameAsString() == "boost::statechart::state" ||
+	    Declaration->getQualifiedNameAsString() == "TimedState" ||
+	    Declaration->getQualifiedNameAsString() == "TimedSimpleState")
 	    return true; // This is an "abstract class" not a real state
-	if (Declaration->getQualifiedNameAsString() == "TimedState")
-	    return true; // This is an "abstract class" not a real state
-	if (Declaration->getQualifiedNameAsString() == "TimedSimpleState")
-	    return true; // This is an "abstract class" not a real state
-
 
 	MyCXXRecordDecl *RecordDecl = static_cast<MyCXXRecordDecl*>(Declaration);
 	const CXXBaseSpecifier *Base;
