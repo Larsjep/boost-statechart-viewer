@@ -1,0 +1,18 @@
+Source: boost-statechart-viewer
+Section: devel
+Priority: extra
+Maintainer: Michal Sojka <sojkam1@fel.cvut.cz>
+Build-Depends: debhelper (>= 8.0.0), autotools-dev, libclang-dev (>= 3.1), llvm-3.1-dev
+Standards-Version: 3.9.3
+Homepage: https://rtime.felk.cvut.cz/statechart-viewer/
+#Vcs-Git: git://git.debian.org/collab-maint/boost-statechart-viewer.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/boost-statechart-viewer.git;a=summary
+
+Package: boost-statechart-viewer
+Architecture: any
+Depends: clang (>= 3.1), ${shlibs:Depends}, ${misc:Depends}
+Description: Visualization of state machines written with boost/statechart library
+ Boost-statechart-viewer is a program for visualization of state
+ machines written in C++ with boost/statechart library. The program
+ itself is written in C++ and uses clang from LLVM project for
+ analyzing the source code.

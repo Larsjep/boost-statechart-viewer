@@ -1,7 +1,13 @@
 -include ../Makefile.config
 
-.PHONY: all
-all: test.pdf StopWatch.pdf main.pdf Camera/Main.pdf Keyboard.pdf
+.PHONY: all clean
+
+PDF = test.pdf StopWatch.pdf main.pdf Camera/Main.pdf Keyboard.pdf
+
+all: $(PDF)
+
+clean:
+	rm -f $(PDF)
 
 CLANG++ ?= $(shell $(LLVM_CONFIG) --bindir)/clang++
 ifeq ($(wildcard $(CLANG++)),)
