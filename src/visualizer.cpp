@@ -407,6 +407,7 @@ public:
 
     void handleSimpleState(CXXRecordDecl *RecordDecl, const CXXBaseSpecifier *Base)
     {
+	int typedef_num = 0;
 	string name(RecordDecl->getName()); //getQualifiedNameAsString());
 	Diag(RecordDecl->getLocStart(), diag_found_state) << name;
 
@@ -446,7 +447,14 @@ public:
 	// TODO: Find when state has no reactions
 	for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
 	     Reactions.first != Reactions.second; ++Reactions.first)
-	    HandleReaction(*Reactions.first, RecordDecl);
+	{	    
+		HandleReaction(*Reactions.first, RecordDecl);
+		typedef_num++;
+	}
+	if(typedef_num == 0) {
+		Diag(RecordDecl->getLocStart(), diag_warning)
+		    << " missing typedef for reactions in state : " << RecordDecl->getName();
+	}
     }
 
     void handleStateMachine(CXXRecordDecl *RecordDecl, const CXXBaseSpecifier *Base)
