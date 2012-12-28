@@ -64,9 +64,11 @@ namespace Model
 	list<string> defferedEvents;
     public:
 	const string name;
-	explicit State(string name) : name(name) {}
+	bool noTypedef;
+	explicit State(string name) : name(name), noTypedef(false) {}
 	void setInitialInnerState(string name) { initialInnerState = name; }
 	void addDeferredEvent(const string &name) { defferedEvents.push_back(name); }
+	void setNoTypedef() { noTypedef = true;}
 	friend ostream& operator<<(ostream& os, const State& s);
     };
 
@@ -97,7 +99,8 @@ namespace Model
 	string label = s.name;
 	for (list<string>::const_iterator i = s.defferedEvents.begin(), e = s.defferedEvents.end(); i != e; ++i)
 	    label.append("<br />").append(*i).append(" / defer");
-	os << indent << s.name << " [label=<" << label << ">]\n";
+	if(s.noTypedef) os << indent << s.name << " [label=<" << label << ">, color=\"red\"]\n";
+	else os << indent << s.name << " [label=<" << label << ">]\n";
 	if (s.size()) {
 	    os << indent << s.name << " -> " << s.initialInnerState << " [style = dashed]\n";
 	    os << indent << "subgraph cluster_" << s.name << " {\n" << indent_inc;
@@ -410,6 +413,7 @@ public:
     {
 	int typedef_num = 0;
 	string name(RecordDecl->getName()); //getQualifiedNameAsString());
+	printf("stav %s\n", RecordDecl->getName());
 	Diag(RecordDecl->getLocStart(), diag_found_state) << name;
 
 	Model::State *state;
@@ -428,13 +432,14 @@ public:
 	    }
 	    c->add(state);
 	}
-
+	//TODO support more innitial states
 	TemplateArgumentLoc Loc;
 	if (MyCXXRecordDecl *InnerInitialState =
 	    static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 2, Loc))) {
-	    if (InnerInitialState->isDerivedFrom("boost::statechart::simple_state") ||
-		InnerInitialState->isDerivedFrom("boost::statechart::state_machine"))
-		state->setInitialInnerState(InnerInitialState->getName());
+	      if (InnerInitialState->isDerivedFrom("boost::statechart::simple_state") ||
+		InnerInitialState->isDerivedFrom("boost::statechart::state_machine")) {
+		  state->setInitialInnerState(InnerInitialState->getName());
+	    }
 	    else
 		Diag(Loc.getTypeSourceInfo()->getTypeLoc().getLocStart(), diag_warning)
 		    << InnerInitialState->getName() << " as inner initial state is not supported" << Loc.getSourceRange();
@@ -445,7 +450,6 @@ public:
 
 	IdentifierInfo& II = ASTCtx->Idents.get("reactions");
 	// TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
-	// TODO: Find when state has no reactions
 	for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
 	     Reactions.first != Reactions.second; ++Reactions.first)
 	{	    
@@ -455,6 +459,7 @@ public:
 	if(typedef_num == 0) {
 		Diag(RecordDecl->getLocStart(), diag_warning)
 		    << " missing typedef for reactions in state : " << RecordDecl->getName();
+		    state->setNoTypedef();
 	}
     }
 
