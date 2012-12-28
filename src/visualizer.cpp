@@ -376,18 +376,19 @@ public:
 	    if (TST->getNumArgs() >= ArgNum+1) {
 		return TST->getArgLoc(ArgNum);
 	    } else
-		Diag(TST->getBeginLoc(), diag_warning) << TST->getType()->getTypeClassName() << "has not enough arguments" << TST->getSourceRange();
+		if(ArgNum!=2)
+		    Diag(TST->getBeginLoc(), diag_warning) << TST->getType()->getTypeClassName() << "has not enough arguments" << TST->getSourceRange();
 	} else
 	    Diag(T.getBeginLoc(), diag_warning) << T.getType()->getTypeClassName() << "type as template argument is not supported" << T.getSourceRange();
 	return TemplateArgumentLoc();
     }
 
     TemplateArgumentLoc getTemplateArgLocOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum) {
-	return getTemplateArgLoc(Base->getTypeSourceInfo()->getTypeLoc(), 1);
+	return getTemplateArgLoc(Base->getTypeSourceInfo()->getTypeLoc(), ArgNum);
     }
 
     CXXRecordDecl *getTemplateArgDeclOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum, TemplateArgumentLoc &Loc) {
-	Loc = getTemplateArgLocOfBase(Base, 1);
+	Loc = getTemplateArgLocOfBase(Base, ArgNum);
 	switch (Loc.getArgument().getKind()) {
 	case TemplateArgument::Type:
 	    return Loc.getTypeSourceInfo()->getType()->getAsCXXRecordDecl();
