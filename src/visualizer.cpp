@@ -99,7 +99,7 @@ namespace Model
 	string label = s.name;
 	for (list<string>::const_iterator i = s.defferedEvents.begin(), e = s.defferedEvents.end(); i != e; ++i)
 	    label.append("<br />").append(*i).append(" / defer");
-	if(s.noTypedef) os << indent << s.name << " [label=<" << label << ">, color=\"red\"]\n";
+	if (s.noTypedef) os << indent << s.name << " [label=<" << label << ">, color=\"red\"]\n";
 	else os << indent << s.name << " [label=<" << label << ">]\n";
 	if (s.size()) {
 	    os << indent << s.name << " -> " << s.initialInnerState << " [style = dashed]\n";
