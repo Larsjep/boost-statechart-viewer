@@ -451,15 +451,12 @@ public:
 	IdentifierInfo& II = ASTCtx->Idents.get("reactions");
 	// TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
 	for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
-	     Reactions.first != Reactions.second; ++Reactions.first)
-	{	    
-		HandleReaction(*Reactions.first, RecordDecl);
-		typedef_num++;
-	}
+	     Reactions.first != Reactions.second; ++Reactions.first, typedef_num++)
+	    HandleReaction(*Reactions.first, RecordDecl);
 	if(typedef_num == 0) {
-		Diag(RecordDecl->getLocStart(), diag_warning)
-		    << " missing typedef for reactions in state : " << RecordDecl->getName();
-		    state->setNoTypedef();
+	    Diag(RecordDecl->getLocStart(), diag_warning)
+		<< " missing typedef for reactions in state : " << RecordDecl->getName();
+	    state->setNoTypedef();
 	}
     }
 
