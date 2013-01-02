@@ -62,10 +62,10 @@ namespace Model
     {
 	string initialInnerState;
 	list<string> defferedEvents;
+	bool noTypedef;
     public:
 	const string name;
-	bool noTypedef;
-	explicit State(string name) : name(name), noTypedef(false) {}
+	explicit State(string name) : noTypedef(false), name(name) {}
 	void setInitialInnerState(string name) { initialInnerState = name; }
 	void addDeferredEvent(const string &name) { defferedEvents.push_back(name); }
 	void setNoTypedef() { noTypedef = true;}
