@@ -455,7 +455,7 @@ public:
 	    HandleReaction(*Reactions.first, RecordDecl);
 	if(typedef_num == 0) {
 	    Diag(RecordDecl->getLocStart(), diag_warning)
-		<< " missing typedef for reactions in state : " << RecordDecl->getName();
+		<< RecordDecl->getName() << "state has no typedef for reactions";
 	    state->setNoTypedef();
 	}
     }
