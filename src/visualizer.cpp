@@ -371,27 +371,27 @@ public:
 	    Diag(Decl->getLocation(), diag_unhandled_reaction_decl) << Decl->getDeclKindName();
     }
 
-    TemplateArgumentLoc getTemplateArgLoc(const TypeLoc &T, unsigned ArgNum)
+    TemplateArgumentLoc getTemplateArgLoc(const TypeLoc &T, unsigned ArgNum, bool ignore)
     {
 	if (const ElaboratedTypeLoc *ET = dyn_cast<ElaboratedTypeLoc>(&T))
-	    return getTemplateArgLoc(ET->getNamedTypeLoc(), ArgNum);
+	    return getTemplateArgLoc(ET->getNamedTypeLoc(), ArgNum, ignore);
 	else if (const TemplateSpecializationTypeLoc *TST = dyn_cast<TemplateSpecializationTypeLoc>(&T)) {
 	    if (TST->getNumArgs() >= ArgNum+1) {
 		return TST->getArgLoc(ArgNum);
 	    } else
-		if(ArgNum!=2)
+		if (!ignore)
 		    Diag(TST->getBeginLoc(), diag_warning) << TST->getType()->getTypeClassName() << "has not enough arguments" << TST->getSourceRange();
 	} else
 	    Diag(T.getBeginLoc(), diag_warning) << T.getType()->getTypeClassName() << "type as template argument is not supported" << T.getSourceRange();
 	return TemplateArgumentLoc();
     }
 
-    TemplateArgumentLoc getTemplateArgLocOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum) {
-	return getTemplateArgLoc(Base->getTypeSourceInfo()->getTypeLoc(), ArgNum);
+    TemplateArgumentLoc getTemplateArgLocOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum, bool ignore) {
+	return getTemplateArgLoc(Base->getTypeSourceInfo()->getTypeLoc(), ArgNum, ignore);
     }
 
-    CXXRecordDecl *getTemplateArgDeclOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum, TemplateArgumentLoc &Loc) {
-	Loc = getTemplateArgLocOfBase(Base, ArgNum);
+    CXXRecordDecl *getTemplateArgDeclOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum, TemplateArgumentLoc &Loc, bool ignore = false) {
+	Loc = getTemplateArgLocOfBase(Base, ArgNum, ignore);
 	switch (Loc.getArgument().getKind()) {
 	case TemplateArgument::Type:
 	    return Loc.getTypeSourceInfo()->getType()->getAsCXXRecordDecl();
@@ -404,16 +404,15 @@ public:
 	return 0;
     }
 
-    CXXRecordDecl *getTemplateArgDeclOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum) {
+    CXXRecordDecl *getTemplateArgDeclOfBase(const CXXBaseSpecifier *Base, unsigned ArgNum, bool ignore = false) {
 	TemplateArgumentLoc Loc;
-	return getTemplateArgDeclOfBase(Base, ArgNum, Loc);
+	return getTemplateArgDeclOfBase(Base, ArgNum, Loc, ignore);
     }
 
     void handleSimpleState(CXXRecordDecl *RecordDecl, const CXXBaseSpecifier *Base)
     {
 	int typedef_num = 0;
 	string name(RecordDecl->getName()); //getQualifiedNameAsString());
-	printf("stav %s\n", RecordDecl->getName());
 	Diag(RecordDecl->getLocStart(), diag_found_state) << name;
 
 	Model::State *state;
@@ -435,7 +434,7 @@ public:
 	//TODO support more innitial states
 	TemplateArgumentLoc Loc;
 	if (MyCXXRecordDecl *InnerInitialState =
-	    static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 2, Loc))) {
+	    static_cast<MyCXXRecordDecl*>(getTemplateArgDeclOfBase(Base, 2, Loc, true))) {
 	      if (InnerInitialState->isDerivedFrom("boost::statechart::simple_state") ||
 		InnerInitialState->isDerivedFrom("boost::statechart::state_machine")) {
 		  state->setInitialInnerState(InnerInitialState->getName());
