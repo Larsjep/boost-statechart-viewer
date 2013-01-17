@@ -22,6 +22,7 @@
 #include <iomanip>
 #include <fstream>
 #include <map>
+#include <vector>
 
 //LLVM Header files
 #include "llvm/Support/raw_ostream.h"
@@ -282,6 +283,7 @@ class Visitor : public RecursiveASTVisitor<Visitor>
     DiagnosticsEngine &Diags;
     unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
 	diag_found_state, diag_found_statemachine, diag_no_history, diag_missing_reaction, diag_warning;
+    std::vector<bool> reactMethodVector;
 
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
@@ -307,8 +309,31 @@ public:
 
     DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID) { return Diags.Report(Loc, DiagID); }
 
+    void checkAllReactMethods(const CXXRecordDecl *SrcState) 
+    {
+	unsigned i = 0;
+	IdentifierInfo& II = ASTCtx->Idents.get("react");
+	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
+	     ReactRes.first != ReactRes.second; ++ReactRes.first) {
+	    if (i<reactMethodVector.size()) {
+		if (reactMethodVector[i] == true) {
+		    CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first);
+		    Diag(React->getParamDecl(0)->getLocStart(), diag_warning) 
+			<< React->getParamDecl(0)->getType().getAsString() << " missing in typedef";
+		}
+	    } else {
+		CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first);
+		Diag(React->getParamDecl(0)->getLocStart(), diag_warning) 
+		    << React->getParamDecl(0)->getType().getAsString() << " missing in typedef";
+	    }
+	    i++;
+	}
+	reactMethodVector.clear();
+    }
+    
     bool HandleCustomReaction(const CXXRecordDecl *SrcState, const Type *EventType)
     {
+	unsigned i = 0;
 	IdentifierInfo& II = ASTCtx->Idents.get("react");
 	// TODO: Lookup for react even in base classes - probably by using Sema::LookupQualifiedName()
 	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
@@ -317,10 +342,12 @@ public:
 		if (React->getNumParams() >= 1) {
 		    const ParmVarDecl *p = React->getParamDecl(0);
 		    const Type *ParmType = p->getType().getTypePtr();
+		    if (i == reactMethodVector.size()) reactMethodVector.push_back(false);
 		    if (ParmType->isLValueReferenceType())
 			ParmType = dyn_cast<LValueReferenceType>(ParmType)->getPointeeType().getTypePtr();
 		    if (ParmType == EventType) {
 			FindTransitVisitor(model, SrcState, EventType).TraverseStmt(React->getBody());
+			reactMethodVector[i] = true;
 			return true;
 		    }
 		} else
@@ -329,6 +356,7 @@ public:
 	    } else
 		Diag((*ReactRes.first)->getSourceRange().getBegin(), diag_warning)
 		    << (*ReactRes.first)->getDeclKindName() << "is not supported as react method";
+	    i++;
 	}
 	return false;
     }
@@ -350,8 +378,8 @@ public:
 		model.transitions.push_back(T);
 	    } else if (name == "boost::statechart::custom_reaction") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
-		if(!HandleCustomReaction(SrcState, EventType)) {
-			Diag(SrcState->getLocation(), diag_missing_reaction) << EventType->getAsCXXRecordDecl()->getName();
+		if (!HandleCustomReaction(SrcState, EventType)) {
+		    Diag(SrcState->getLocation(), diag_missing_reaction) << EventType->getAsCXXRecordDecl()->getName();
 		}
 	    } else if (name == "boost::statechart::deferral") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
@@ -376,6 +404,7 @@ public:
 			   r->getLocStart(), SrcState);
 	else
 	    Diag(Decl->getLocation(), diag_unhandled_reaction_decl) << Decl->getDeclKindName();
+	checkAllReactMethods(SrcState);
     }
 
     TemplateArgumentLoc getTemplateArgLoc(const TypeLoc &T, unsigned ArgNum, bool ignore)
