@@ -316,7 +316,7 @@ public:
 	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
 	     ReactRes.first != ReactRes.second; ++ReactRes.first) {
 	    if (i<reactMethodVector.size()) {
-		if (reactMethodVector[i] == true) {
+		if (reactMethodVector[i] == false) {
 		    CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first);
 		    Diag(React->getParamDecl(0)->getLocStart(), diag_warning) 
 			<< React->getParamDecl(0)->getType().getAsString() << " missing in typedef";
