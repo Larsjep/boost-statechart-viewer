@@ -281,7 +281,7 @@ class Visitor : public RecursiveASTVisitor<Visitor>
     Model::Model &model;
     DiagnosticsEngine &Diags;
     unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
-	diag_found_state, diag_found_statemachine, diag_no_history, diag_warning;
+	diag_found_state, diag_found_statemachine, diag_no_history, diag_missing_reaction, diag_warning;
 
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
@@ -299,13 +299,15 @@ public:
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Unhandled reaction decl '%0'");
 	diag_unhandled_reaction_decl =
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "History is not yet supported");
+	diag_missing_reaction =
+	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Missing react method for event '%0'");
 	diag_warning =
 	    Diags.getCustomDiagID(DiagnosticsEngine::Warning, "'%0' %1");
     }
 
     DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID) { return Diags.Report(Loc, DiagID); }
 
-    void HandleCustomReaction(const CXXRecordDecl *SrcState, const Type *EventType)
+    bool HandleCustomReaction(const CXXRecordDecl *SrcState, const Type *EventType)
     {
 	IdentifierInfo& II = ASTCtx->Idents.get("react");
 	// TODO: Lookup for react even in base classes - probably by using Sema::LookupQualifiedName()
@@ -317,8 +319,10 @@ public:
 		    const Type *ParmType = p->getType().getTypePtr();
 		    if (ParmType->isLValueReferenceType())
 			ParmType = dyn_cast<LValueReferenceType>(ParmType)->getPointeeType().getTypePtr();
-		    if (ParmType == EventType)
+		    if (ParmType == EventType) {
 			FindTransitVisitor(model, SrcState, EventType).TraverseStmt(React->getBody());
+			return true;
+		    }
 		} else
 		    Diag(React->getLocStart(), diag_warning)
 			<< React << "has not a parameter";
@@ -326,6 +330,7 @@ public:
 		Diag((*ReactRes.first)->getSourceRange().getBegin(), diag_warning)
 		    << (*ReactRes.first)->getDeclKindName() << "is not supported as react method";
 	}
+	return false;
     }
 
     void HandleReaction(const Type *T, const SourceLocation Loc, CXXRecordDecl *SrcState)
@@ -345,7 +350,9 @@ public:
 		model.transitions.push_back(T);
 	    } else if (name == "boost::statechart::custom_reaction") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
-		HandleCustomReaction(SrcState, EventType);
+		if(!HandleCustomReaction(SrcState, EventType)) {
+			Diag(SrcState->getLocation(), diag_missing_reaction) << EventType->getAsCXXRecordDecl()->getName();
+		}
 	    } else if (name == "boost::statechart::deferral") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
