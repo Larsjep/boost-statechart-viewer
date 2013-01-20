@@ -283,7 +283,7 @@ class Visitor : public RecursiveASTVisitor<Visitor>
     DiagnosticsEngine &Diags;
     unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
 	diag_found_state, diag_found_statemachine, diag_no_history, diag_missing_reaction, diag_warning;
-    std::vector<bool> reactMethodVector;
+    std::vector<bool> reactMethodInReactions; // Indicates whether i-th react method is referenced from typedef reactions.
 
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
@@ -315,20 +315,20 @@ public:
 	IdentifierInfo& II = ASTCtx->Idents.get("react");
 	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
 	     ReactRes.first != ReactRes.second; ++ReactRes.first) {
-	    if (i<reactMethodVector.size()) {
-		if (reactMethodVector[i] == false) {
+	    if (i < reactMethodInReactions.size()) {
+		if (reactMethodInReactions[i] == false) {
 		    CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first);
 		    Diag(React->getParamDecl(0)->getLocStart(), diag_warning) 
-			<< React->getParamDecl(0)->getType().getAsString() << " missing in typedef";
+			<< React->getParamDecl(0)->getType().getAsString() << " missing in typedef reactions";
 		}
 	    } else {
 		CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first);
 		Diag(React->getParamDecl(0)->getLocStart(), diag_warning) 
-		    << React->getParamDecl(0)->getType().getAsString() << " missing in typedef";
+		    << React->getParamDecl(0)->getType().getAsString() << " missing in typedef reactions";
 	    }
 	    i++;
 	}
-	reactMethodVector.clear();
+	reactMethodInReactions.clear();
     }
     
     bool HandleCustomReaction(const CXXRecordDecl *SrcState, const Type *EventType)
@@ -342,12 +342,12 @@ public:
 		if (React->getNumParams() >= 1) {
 		    const ParmVarDecl *p = React->getParamDecl(0);
 		    const Type *ParmType = p->getType().getTypePtr();
-		    if (i == reactMethodVector.size()) reactMethodVector.push_back(false);
+		    if (i == reactMethodInReactions.size()) reactMethodInReactions.push_back(false);
 		    if (ParmType->isLValueReferenceType())
 			ParmType = dyn_cast<LValueReferenceType>(ParmType)->getPointeeType().getTypePtr();
 		    if (ParmType == EventType) {
 			FindTransitVisitor(model, SrcState, EventType).TraverseStmt(React->getBody());
-			reactMethodVector[i] = true;
+			reactMethodInReactions[i] = true;
 			return true;
 		    }
 		} else
