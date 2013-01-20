@@ -328,7 +328,6 @@ public:
 	    }
 	    i++;
 	}
-	reactMethodInReactions.clear();
     }
     
     bool HandleCustomReaction(const CXXRecordDecl *SrcState, const Type *EventType)
@@ -450,6 +449,7 @@ public:
 	int typedef_num = 0;
 	string name(RecordDecl->getName()); //getQualifiedNameAsString());
 	Diag(RecordDecl->getLocStart(), diag_found_state) << name;
+	reactMethodInReactions.clear();
 
 	Model::State *state;
 	// Either we saw a reference to forward declared state
