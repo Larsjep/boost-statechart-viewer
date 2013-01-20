@@ -314,19 +314,12 @@ public:
 	unsigned i = 0;
 	IdentifierInfo& II = ASTCtx->Idents.get("react");
 	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
-	     ReactRes.first != ReactRes.second; ++ReactRes.first) {
-	    if (i < reactMethodInReactions.size()) {
-		if (reactMethodInReactions[i] == false) {
-		    CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first);
-		    Diag(React->getParamDecl(0)->getLocStart(), diag_warning) 
-			<< React->getParamDecl(0)->getType().getAsString() << " missing in typedef reactions";
-		}
-	    } else {
+	     ReactRes.first != ReactRes.second; ++ReactRes.first, ++i) {
+	    if (i >= reactMethodInReactions.size() || reactMethodInReactions[i] == false) {
 		CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first);
-		Diag(React->getParamDecl(0)->getLocStart(), diag_warning) 
+		Diag(React->getParamDecl(0)->getLocStart(), diag_warning)
 		    << React->getParamDecl(0)->getType().getAsString() << " missing in typedef reactions";
 	    }
-	    i++;
 	}
     }
     
