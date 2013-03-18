@@ -278,12 +278,27 @@ public:
 
 class Visitor : public RecursiveASTVisitor<Visitor>
 {
+    struct eventModel {
+	string name;
+	SourceLocation loc;
+	eventModel(string ev, SourceLocation sourceLoc) : name(ev), loc(sourceLoc){}
+    };
+    struct testEventModel {
+	string eventName;
+	testEventModel(string name) : eventName(name){}
+	bool operator() (const eventModel& model) {
+	    if (eventName.compare(model.name) == 0)
+		return true;
+	    return false;
+	}
+    };
     ASTContext *ASTCtx;
     Model::Model &model;
     DiagnosticsEngine &Diags;
     unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
 	diag_found_state, diag_found_statemachine, diag_no_history, diag_missing_reaction, diag_warning;
     std::vector<bool> reactMethodInReactions; // Indicates whether i-th react method is referenced from typedef reactions.
+    std::list<eventModel> listOfDefinedEvents;
 
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
@@ -365,6 +380,7 @@ public:
 		const Type *DstStateType = TST->getArg(1).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
 		CXXRecordDecl *DstState = DstStateType->getAsCXXRecordDecl();
+		listOfDefinedEvents.remove_if(testEventModel(Event->getNameAsString()));
 
 		Model::Transition *T = new Model::Transition(SrcState->getName(), DstState->getName(), Event->getName());
 		model.transitions.push_back(T);
@@ -373,9 +389,11 @@ public:
 		if (!HandleCustomReaction(SrcState, EventType)) {
 		    Diag(SrcState->getLocation(), diag_missing_reaction) << EventType->getAsCXXRecordDecl()->getName();
 		}
+		listOfDefinedEvents.remove_if(testEventModel(EventType->getAsCXXRecordDecl()->getNameAsString()));
 	    } else if (name == "boost::statechart::deferral") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
+		listOfDefinedEvents.remove_if(testEventModel(Event->getNameAsString()));
 
 		Model::State *s = model.findState(SrcState->getName());
 		assert(s);
@@ -516,10 +534,13 @@ public:
 	else if (RecordDecl->isDerivedFrom("boost::statechart::state_machine", &Base))
 	    handleStateMachine(RecordDecl, Base);
 	else if (RecordDecl->isDerivedFrom("boost::statechart::event"))
-	{
-	    //sc.events.push_back(RecordDecl->getNameAsString());
-	}
+	    listOfDefinedEvents.push_back(eventModel(RecordDecl->getNameAsString(), RecordDecl->getLocation()));
 	return true;
+    }
+    void printUnusedEventDefinitions() {
+	for(list<eventModel>::iterator it = listOfDefinedEvents.begin(); it!=listOfDefinedEvents.end(); it++)
+	    Diag((*it).loc, diag_warning)
+		<< (*it).name << "event defined but not used in any state";
     }
 };
 
@@ -536,6 +557,7 @@ public:
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
 	visitor.TraverseDecl(Context.getTranslationUnitDecl());
+	visitor.printUnusedEventDefinitions();
 	model.write_as_dot_file(destFileName);
     }
 };
