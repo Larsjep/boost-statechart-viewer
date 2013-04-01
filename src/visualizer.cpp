@@ -486,8 +486,8 @@ public:
 		InnerInitialState->isDerivedFrom("boost::statechart::state_machine")) {
 		  state->setInitialInnerState(InnerInitialState->getName());
 	    }
-	    else
-		Diag(Loc.getTypeSourceInfo()->getTypeLoc().getLocStart(), diag_warning)
+	    else if (!InnerInitialState->getNameAsString().compare("boost::mpl::list<>"))
+	      Diag(Loc.getTypeSourceInfo()->getTypeLoc().getLocStart(), diag_warning)
 		    << InnerInitialState->getName() << " as inner initial state is not supported" << Loc.getSourceRange();
 	}
 
