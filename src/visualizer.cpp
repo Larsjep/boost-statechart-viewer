@@ -324,6 +324,12 @@ public:
 
     DiagnosticBuilder Diag(SourceLocation Loc, unsigned DiagID) { return Diags.Report(Loc, DiagID); }
 
+    void initializeDiagnostic()
+    {
+	/*Initialization of diagnostics. If this is not done. No notes are printed before first warning or error.*/
+	Diags.Report(SourceLocation(), Diags.getCustomDiagID(DiagnosticsEngine::Warning, "Visualizer plugin is running!\n\n"));
+    }
+
     void checkAllReactMethods(const CXXRecordDecl *SrcState) 
     {
 	unsigned i = 0;
@@ -557,6 +563,7 @@ public:
 	: visitor(Context, model, D), destFileName(destFileName) {}
 
     virtual void HandleTranslationUnit(clang::ASTContext &Context) {
+	visitor.initializeDiagnostic();
 	visitor.TraverseDecl(Context.getTranslationUnitDecl());
 	visitor.printUnusedEventDefinitions();
 	model.write_as_dot_file(destFileName);
