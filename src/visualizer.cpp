@@ -314,7 +314,7 @@ public:
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Unhandled reaction type '%0'");
 	diag_unhandled_reaction_decl =
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Unhandled reaction decl '%0'");
-	diag_unhandled_reaction_decl =
+	diag_no_history =
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "History is not yet supported");
 	diag_missing_reaction =
 	    Diags.getCustomDiagID(DiagnosticsEngine::Error, "Missing react method for event '%0'");
@@ -523,8 +523,9 @@ public:
 	    return true;
 	if (Declaration->getQualifiedNameAsString() == "boost::statechart::state" ||
 	    Declaration->getQualifiedNameAsString() == "TimedState" ||
-	    Declaration->getQualifiedNameAsString() == "TimedSimpleState")
-	    return true; // This is an "abstract class" not a real state
+	    Declaration->getQualifiedNameAsString() == "TimedSimpleState" ||
+	    Declaration->getQualifiedNameAsString() == "boost::statechart::assynchronous_state_machine")
+	    return true; // This is an "abstract class" not a real state or real state machine
 
 	MyCXXRecordDecl *RecordDecl = static_cast<MyCXXRecordDecl*>(Declaration);
 	const CXXBaseSpecifier *Base;
