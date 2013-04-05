@@ -487,7 +487,7 @@ public:
 		  state->setInitialInnerState(InnerInitialState->getName());
 	    }
 	    else if (!InnerInitialState->getNameAsString().compare("boost::mpl::list<>"))
-	      Diag(Loc.getTypeSourceInfo()->getTypeLoc().getLocStart(), diag_warning)
+	      Diag(Loc.getTypeSourceInfo()->getTypeLoc().getBeginLoc(), diag_warning)
 		    << InnerInitialState->getName() << " as inner initial state is not supported" << Loc.getSourceRange();
 	}
 
