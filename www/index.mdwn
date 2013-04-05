@@ -16,8 +16,8 @@ is released under the GNU GPL license.
 
 NEWS
 -----
+- 2013-04-05 The program is working with LLVM and Clang version 3.0 or higher
 - 2012-07-11 We have got a new [mailing list][list].
-- 2011-08-11 Added support for orthogonal states.
 
 Authors
 --------
@@ -30,29 +30,24 @@ Petr Silhavik, Michal Sojka. You can contact us using a
 Status
 -------
 
-- The program can found states and transitions in the source code. Now it also supports orthogonal states.
-- The program understands all options and flags as the compilers (gcc, clang, ...).
+- The program can found states and transitions in the source code.
+- The program understands all options and flags as the compilers (gcc, clang, ...). The syntax analysis is done by compiler clang.
 - State machines can be defined in more than one file.
-- The state machine can be inside many namespaces, but not inside templates.
+- Program provides diagnostics of state machines eg. event usage, missing typedefs for reactions.
 
 For compiling and correctly working program it is necessary to have
-LLVM and clang version 2.9. We are currently trying to update it for
-LLVM 3.1.
+LLVM and clang version 3.0 or higher.
 
 
 Usage
 ------
 
-The program can be used almost the same way as a C compiler. You will
-typically need to specify locations for all header files except of the
-files stored in system folder(in Linux: /usr/...) using `-I` option.
-Of course you can specify the output filename (`-o` option). Program
-displays all diagnostic messages like compilers. If an error occurs
-the program stops.
+The program is plugin for compiler clang. The produced output file has the same name as the input file with source code.
+It is also possible to use script that also produces the state diagram in format pdf. It can be also found in repository.
 
 ####Example of command line invocation: 
 
-    ./visualizer main.cpp -o graph.dot -I /home/petr/install/
+    clang++ -Xclang -load -Xclang visualizer.so -Xclang -plugin -Xclang visualize-statechart -c file.cpp
 
 The output file can be transformed into the picture using classical
 [dot][graphviz] commands (e.g. `dot -Tpng graph.dot -o graph.png`) . The initial
@@ -83,8 +78,10 @@ Gallery
 [[Source code|StopWatch.cpp]]
 
 ### Camera
+ - Camera example from boost statechart library
+ - State Storing is red because it has no typedef for reactions and it can be error produced by programmer
 [[camera.png]]  
-[[Source code|StopWatch.cpp]]
+[[Source code|camera.tar.gz]]
 
 ### Big
 [[big.png]]  
