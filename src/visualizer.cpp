@@ -263,7 +263,13 @@ public:
 	: model(model), SrcState(SrcState), EventType(EventType) {}
 
     bool VisitMemberExpr(MemberExpr *E) {
-	if (E->getMemberNameInfo().getAsString() != "transit")
+	if (E->getMemberNameInfo().getAsString() == "defer_event") {
+		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
+
+		Model::State *s = model.findState(SrcState->getName());
+		assert(s);
+		s->addDeferredEvent(Event->getName());
+	} else if (E->getMemberNameInfo().getAsString() != "transit")
 	    return true;
 	if (E->hasExplicitTemplateArgs()) {
 	    const Type *DstStateType = E->getExplicitTemplateArgs()[0].getArgument().getAsType().getTypePtr();
