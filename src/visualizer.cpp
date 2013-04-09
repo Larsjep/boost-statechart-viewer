@@ -63,12 +63,14 @@ namespace Model
     {
 	string initialInnerState;
 	list<string> defferedEvents;
+	list<string> inStateEvents;
 	bool noTypedef;
     public:
 	const string name;
 	explicit State(string name) : noTypedef(false), name(name) {}
 	void setInitialInnerState(string name) { initialInnerState = name; }
 	void addDeferredEvent(const string &name) { defferedEvents.push_back(name); }
+	void addInStateEvent(const string &name) { inStateEvents.push_back(name); }
 	void setNoTypedef() { noTypedef = true;}
 	friend ostream& operator<<(ostream& os, const State& s);
     };
@@ -100,6 +102,8 @@ namespace Model
 	string label = s.name;
 	for (list<string>::const_iterator i = s.defferedEvents.begin(), e = s.defferedEvents.end(); i != e; ++i)
 	    label.append("<br />").append(*i).append(" / defer");
+	for (list<string>::const_iterator i = s.inStateEvents.begin(), e = s.inStateEvents.end(); i != e; ++i)
+	    label.append("<br />").append(*i).append(" / in state");
 	if (s.noTypedef) os << indent << s.name << " [label=<" << label << ">, color=\"red\"]\n";
 	else os << indent << s.name << " [label=<" << label << ">]\n";
 	if (s.size()) {
@@ -413,6 +417,15 @@ public:
 	    } else if (name == "boost::mpl::list") {
 		for (TemplateSpecializationType::iterator Arg = TST->begin(), End = TST->end(); Arg != End; ++Arg)
 		    HandleReaction(Arg->getAsType().getTypePtr(), Loc, SrcState);
+	    } else if (name == "boost::statechart::in_state_reaction") {
+		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
+		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
+		listOfDefinedEvents.remove_if(testEventModel(Event->getNameAsString()));
+
+		Model::State *s = model.findState(SrcState->getName());
+		assert(s);
+		s->addInStateEvent(Event->getName());
+	      
 	    } else
 		Diag(Loc, diag_unhandled_reaction_type) << name;
 	} else
