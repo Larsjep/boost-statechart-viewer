@@ -80,6 +80,7 @@ Gallery
 ### Camera
  - Camera example from boost statechart library
  - State Storing is red because it has no typedef for reactions and it can be error produced by programmer
+
 [[camera.png]]  
 [[Source code|camera.tar.gz]]
 
