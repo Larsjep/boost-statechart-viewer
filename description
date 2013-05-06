@@ -1,5 +1,8 @@
-The program can visualize simple state machines. It is able to visualize states and transitions. Now it doesn't support orthogonal states. The state machine can be inside namespaces, but not in templates. This program works correctly with basic topic (StopWatch) in your examples. 
+The clang plugin can visualize simple state machines. It is able to visualize states and transitions. Now it doesn't support orthogonal states. The state machine can be inside namespaces. In folder examples you can find some source code of state machines that can be visualized using this tool. 
 
-The input for the program is the file with the state machine, using the command line you need to specify all source locations for finding header files, except of system source locations. For doing this you can use typical compiler options and flags (like -I for include files). The command line works the same as in the compilers. The output format is dot and the output file can be transformed into the picture using classic dot commands. 
+The input file for the program is the file with the state machine, using the command line you need to specify all source locations for finding header files, except of system source locations. For doing this you can use typical compiler options and flags (like -I for include files). As this is plugin for compiler the program line works the same as normal compiler. The output format is dot and the output file can be transformed into the picture using classic dot commands. 
 
-For compiling the program you need to have LLVM and Clang installed. The program should work with packages distributed with operating system or you can download LLVM and Clang from repositories and compile it.
+Example of command line invocation:
+clang++ -Xclang -load -Xclang visualizer.so -Xclang -plugin -Xclang visualize-statechart -c file.cpp
+
+For compiling and running the plugin you need to have LLVM and clang installed. The program should work with packages distributed with operating system or you can download LLVM and clang from repositories and compile it.
