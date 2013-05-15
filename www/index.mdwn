@@ -33,6 +33,7 @@ Status
 - The program can found states and transitions in the source code.
 - The program understands all options and flags as the compilers (gcc, clang, ...). The syntax analysis is done by compiler clang.
 - State machines can be defined in more than one file.
+- All states and their implementations must be directly accesible from file that is used as input for viewer.
 - Program provides diagnostics of state machines eg. event usage, missing typedefs for reactions.
 
 For compiling and correctly working program it is necessary to have
