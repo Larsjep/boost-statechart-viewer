@@ -16,6 +16,7 @@ is released under the GNU GPL license.
 
 NEWS
 -----
+- 2013-05-16 Script for generating is able to work with more source files and treat them as one state machine.
 - 2013-04-05 The program is working with LLVM and Clang version 3.0 or higher
 - 2012-07-11 We have got a new [mailing list][list].
 
@@ -44,7 +45,8 @@ Usage
 ------
 
 The program is plugin for compiler clang. The produced output file has the same name as the input file with source code.
-It is also possible to use script that also produces the state diagram in format pdf. It can be also found in repository.
+It is also possible to use script that also produces the state diagram in format pdf. It can be also found in repository. 
+This script is able to work with more C++ files and treat them as one state machine. This option can be accesed by using -link as first parameter. The other parameters should be all files that are used for compilation of state machines (e.g. *.cpp, *.cc). If this option is not used state diagram is generated for all files independently.
 
 ####Example of command line invocation: 
 
