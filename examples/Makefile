@@ -1,5 +1,7 @@
 -include ../Makefile.config
 
+LLVM_CONFIG ?= llvm-config
+
 .PHONY: all clean
 
 PDF = test.pdf StopWatch.pdf main.pdf Camera/Main.pdf Keyboard.pdf
