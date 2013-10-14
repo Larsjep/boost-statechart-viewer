@@ -293,14 +293,11 @@ class Visitor : public RecursiveASTVisitor<Visitor>
 	SourceLocation loc;
 	eventModel(string ev, SourceLocation sourceLoc) : name(ev), loc(sourceLoc){}
     };
-    struct testEventModel {
+
+    struct eventHasName {
 	string eventName;
-	testEventModel(string name) : eventName(name){}
-	bool operator() (const eventModel& model) {
-	    if (eventName.compare(model.name) == 0)
-		return true;
-	    return false;
-	}
+	eventHasName(string name) : eventName(name){}
+	bool operator() (const eventModel& model) { return (eventName.compare(model.name) == 0); }
     };
     ASTContext *ASTCtx;
     Model::Model &model;
@@ -390,7 +387,7 @@ public:
 		const Type *DstStateType = TST->getArg(1).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
 		CXXRecordDecl *DstState = DstStateType->getAsCXXRecordDecl();
-		unusedEvents.remove_if(testEventModel(Event->getNameAsString()));
+		unusedEvents.remove_if(eventHasName(Event->getNameAsString()));
 
 		Model::Transition *T = new Model::Transition(SrcState->getName(), DstState->getName(), Event->getName());
 		model.transitions.push_back(T);
@@ -399,11 +396,11 @@ public:
 		if (!HandleCustomReaction(SrcState, EventType)) {
 		    Diag(SrcState->getLocation(), diag_missing_reaction) << EventType->getAsCXXRecordDecl()->getName();
 		}
-		unusedEvents.remove_if(testEventModel(EventType->getAsCXXRecordDecl()->getNameAsString()));
+		unusedEvents.remove_if(eventHasName(EventType->getAsCXXRecordDecl()->getNameAsString()));
 	    } else if (name == "boost::statechart::deferral") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
-		unusedEvents.remove_if(testEventModel(Event->getNameAsString()));
+		unusedEvents.remove_if(eventHasName(Event->getNameAsString()));
 
 		Model::State *s = model.findState(SrcState->getName());
 		assert(s);
@@ -414,7 +411,7 @@ public:
 	    } else if (name == "boost::statechart::in_state_reaction") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
-		unusedEvents.remove_if(testEventModel(Event->getNameAsString()));
+		unusedEvents.remove_if(eventHasName(Event->getNameAsString()));
 
 		Model::State *s = model.findState(SrcState->getName());
 		assert(s);
@@ -553,8 +550,10 @@ public:
 	    handleSimpleState(RecordDecl, Base);
 	else if (RecordDecl->isDerivedFrom("boost::statechart::state_machine", &Base))
 	    handleStateMachine(RecordDecl, Base);
-	else if (RecordDecl->isDerivedFrom("boost::statechart::event"))
+	else if (RecordDecl->isDerivedFrom("boost::statechart::event")) {
+	    // Mark the event as unused until we found that somebody uses it
 	    unusedEvents.push_back(eventModel(RecordDecl->getNameAsString(), RecordDecl->getLocation()));
+	}
 	return true;
     }
     void printUnusedEventDefinitions() {
