@@ -308,7 +308,7 @@ class Visitor : public RecursiveASTVisitor<Visitor>
     unsigned diag_unhandled_reaction_type, diag_unhandled_reaction_decl,
 	diag_found_state, diag_found_statemachine, diag_no_history, diag_missing_reaction, diag_warning;
     std::vector<bool> reactMethodInReactions; // Indicates whether i-th react method is referenced from typedef reactions.
-    std::list<eventModel> listOfDefinedEvents;
+    std::list<eventModel> unusedEvents;
 
 public:
     bool shouldVisitTemplateInstantiations() const { return true; }
@@ -390,7 +390,7 @@ public:
 		const Type *DstStateType = TST->getArg(1).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
 		CXXRecordDecl *DstState = DstStateType->getAsCXXRecordDecl();
-		listOfDefinedEvents.remove_if(testEventModel(Event->getNameAsString()));
+		unusedEvents.remove_if(testEventModel(Event->getNameAsString()));
 
 		Model::Transition *T = new Model::Transition(SrcState->getName(), DstState->getName(), Event->getName());
 		model.transitions.push_back(T);
@@ -399,11 +399,11 @@ public:
 		if (!HandleCustomReaction(SrcState, EventType)) {
 		    Diag(SrcState->getLocation(), diag_missing_reaction) << EventType->getAsCXXRecordDecl()->getName();
 		}
-		listOfDefinedEvents.remove_if(testEventModel(EventType->getAsCXXRecordDecl()->getNameAsString()));
+		unusedEvents.remove_if(testEventModel(EventType->getAsCXXRecordDecl()->getNameAsString()));
 	    } else if (name == "boost::statechart::deferral") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
-		listOfDefinedEvents.remove_if(testEventModel(Event->getNameAsString()));
+		unusedEvents.remove_if(testEventModel(Event->getNameAsString()));
 
 		Model::State *s = model.findState(SrcState->getName());
 		assert(s);
@@ -414,7 +414,7 @@ public:
 	    } else if (name == "boost::statechart::in_state_reaction") {
 		const Type *EventType = TST->getArg(0).getAsType().getTypePtr();
 		CXXRecordDecl *Event = EventType->getAsCXXRecordDecl();
-		listOfDefinedEvents.remove_if(testEventModel(Event->getNameAsString()));
+		unusedEvents.remove_if(testEventModel(Event->getNameAsString()));
 
 		Model::State *s = model.findState(SrcState->getName());
 		assert(s);
@@ -554,11 +554,11 @@ public:
 	else if (RecordDecl->isDerivedFrom("boost::statechart::state_machine", &Base))
 	    handleStateMachine(RecordDecl, Base);
 	else if (RecordDecl->isDerivedFrom("boost::statechart::event"))
-	    listOfDefinedEvents.push_back(eventModel(RecordDecl->getNameAsString(), RecordDecl->getLocation()));
+	    unusedEvents.push_back(eventModel(RecordDecl->getNameAsString(), RecordDecl->getLocation()));
 	return true;
     }
     void printUnusedEventDefinitions() {
-	for(list<eventModel>::iterator it = listOfDefinedEvents.begin(); it!=listOfDefinedEvents.end(); it++)
+	for(list<eventModel>::iterator it = unusedEvents.begin(); it!=unusedEvents.end(); it++)
 	    Diag((*it).loc, diag_warning)
 		<< (*it).name << "event defined but not used in any state";
     }
