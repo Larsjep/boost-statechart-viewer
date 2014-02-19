@@ -335,10 +335,11 @@ public:
     {
 	unsigned i = 0;
 	IdentifierInfo& II = ASTCtx->Idents.get("react");
-	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
-	     ReactRes.first != ReactRes.second; ++ReactRes.first, ++i) {
+        DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
+        DeclContext::lookup_const_result::iterator it, end;
+	for (it = ReactRes.begin(), end=ReactRes.end(); it != end; ++it, ++i) {
 	    if (i >= reactMethodInReactions.size() || reactMethodInReactions[i] == false) {
-		CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first);
+		CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*it);
 		Diag(React->getParamDecl(0)->getLocStart(), diag_warning)
 		    << React->getParamDecl(0)->getType().getAsString() << " missing in typedef reactions";
 	    }
@@ -350,9 +351,10 @@ public:
 	unsigned i = 0;
 	IdentifierInfo& II = ASTCtx->Idents.get("react");
 	// TODO: Lookup for react even in base classes - probably by using Sema::LookupQualifiedName()
-	for (DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
-	     ReactRes.first != ReactRes.second; ++ReactRes.first) {
-	    if (CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*ReactRes.first)) {
+        DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
+        DeclContext::lookup_const_result::iterator it, end;
+	for (it = ReactRes.begin(), end=ReactRes.end(); it != end; ++it) {
+	    if (CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*it)) {
 		if (React->getNumParams() >= 1) {
 		    const ParmVarDecl *p = React->getParamDecl(0);
 		    const Type *ParmType = p->getType().getTypePtr();
@@ -368,8 +370,8 @@ public:
 		    Diag(React->getLocStart(), diag_warning)
 			<< React << "has not a parameter";
 	    } else
-		Diag((*ReactRes.first)->getSourceRange().getBegin(), diag_warning)
-		    << (*ReactRes.first)->getDeclKindName() << "is not supported as react method";
+		Diag((*it)->getSourceRange().getBegin(), diag_warning)
+		    << (*it)->getDeclKindName() << "is not supported as react method";
 	    i++;
 	}
 	return false;
@@ -435,14 +437,14 @@ public:
 
     TemplateArgumentLoc getTemplateArgLoc(const TypeLoc &T, unsigned ArgNum, bool ignore)
     {
-	if (const ElaboratedTypeLoc *ET = dyn_cast<ElaboratedTypeLoc>(&T))
-	    return getTemplateArgLoc(ET->getNamedTypeLoc(), ArgNum, ignore);
-	else if (const TemplateSpecializationTypeLoc *TST = dyn_cast<TemplateSpecializationTypeLoc>(&T)) {
-	    if (TST->getNumArgs() >= ArgNum+1) {
-		return TST->getArgLoc(ArgNum);
+	if (const ElaboratedTypeLoc ET = T.getAs<ElaboratedTypeLoc>())
+	    return getTemplateArgLoc(ET.getNamedTypeLoc(), ArgNum, ignore);
+	else if (const TemplateSpecializationTypeLoc TST = T.getAs<TemplateSpecializationTypeLoc>()) {
+	    if (TST.getNumArgs() >= ArgNum+1) {
+		return TST.getArgLoc(ArgNum);
 	    } else
 		if (!ignore)
-		    Diag(TST->getBeginLoc(), diag_warning) << TST->getType()->getTypeClassName() << "has not enough arguments" << TST->getSourceRange();
+		    Diag(TST.getBeginLoc(), diag_warning) << TST.getType()->getTypeClassName() << "has not enough arguments" << TST.getSourceRange();
 	} else
 	    Diag(T.getBeginLoc(), diag_warning) << T.getType()->getTypeClassName() << "type as template argument is not supported" << T.getSourceRange();
 	return TemplateArgumentLoc();
@@ -512,9 +514,10 @@ public:
 
 	IdentifierInfo& II = ASTCtx->Idents.get("reactions");
 	// TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
-	for (DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
-	     Reactions.first != Reactions.second; ++Reactions.first, typedef_num++)
-	    HandleReaction(*Reactions.first, RecordDecl);
+        DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
+        DeclContext::lookup_result::iterator it, end;
+	for (it = Reactions.begin(), end = Reactions.end(); it != end; ++it, typedef_num++)
+	    HandleReaction(*it, RecordDecl);
 	if(typedef_num == 0) {
 	    Diag(RecordDecl->getLocStart(), diag_warning)
 		<< RecordDecl->getName() << "state has no typedef for reactions";
