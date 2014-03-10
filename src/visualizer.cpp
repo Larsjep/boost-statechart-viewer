@@ -335,8 +335,8 @@ public:
     {
 	unsigned i = 0;
 	IdentifierInfo& II = ASTCtx->Idents.get("react");
-        DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
-        DeclContext::lookup_const_result::iterator it, end;
+	DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
+	DeclContext::lookup_const_result::iterator it, end;
 	for (it = ReactRes.begin(), end=ReactRes.end(); it != end; ++it, ++i) {
 	    if (i >= reactMethodInReactions.size() || reactMethodInReactions[i] == false) {
 		CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*it);
@@ -351,8 +351,8 @@ public:
 	unsigned i = 0;
 	IdentifierInfo& II = ASTCtx->Idents.get("react");
 	// TODO: Lookup for react even in base classes - probably by using Sema::LookupQualifiedName()
-        DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
-        DeclContext::lookup_const_result::iterator it, end;
+	DeclContext::lookup_const_result ReactRes = SrcState->lookup(DeclarationName(&II));
+	DeclContext::lookup_const_result::iterator it, end;
 	for (it = ReactRes.begin(), end=ReactRes.end(); it != end; ++it) {
 	    if (CXXMethodDecl *React = dyn_cast<CXXMethodDecl>(*it)) {
 		if (React->getNumParams() >= 1) {
@@ -514,8 +514,8 @@ public:
 
 	IdentifierInfo& II = ASTCtx->Idents.get("reactions");
 	// TODO: Lookup for reactions even in base classes - probably by using Sema::LookupQualifiedName()
-        DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
-        DeclContext::lookup_result::iterator it, end;
+	DeclContext::lookup_result Reactions = RecordDecl->lookup(DeclarationName(&II));
+	DeclContext::lookup_result::iterator it, end;
 	for (it = Reactions.begin(), end = Reactions.end(); it != end; ++it, typedef_num++)
 	    HandleReaction(*it, RecordDecl);
 	if(typedef_num == 0) {
