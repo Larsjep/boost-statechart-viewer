@@ -16,6 +16,7 @@ is released under the GNU GPL license.
 
 NEWS
 -----
+- 2014-03-10 Updated to work with clang/llvm 3.3 and 3.4. Thanks Jan Rueegg.
 - 2013-05-16 Script for generating is able to work with more source files and treat them as one state machine.
 - 2013-04-05 The program is working with LLVM and Clang version 3.0 or higher
 - 2012-07-11 We have got a new [mailing list][list].
@@ -38,7 +39,7 @@ Status
 - Program provides diagnostics of state machines eg. event usage, missing typedefs for reactions.
 
 For compiling and correctly working program it is necessary to have
-LLVM and clang version 3.0 or higher.
+LLVM and clang version 3.3 or higher.
 
 
 Usage
