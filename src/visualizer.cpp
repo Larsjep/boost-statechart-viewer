@@ -603,7 +603,7 @@ protected:
       if (args[i] == "-an-error") {
         DiagnosticsEngine &D = CI.getDiagnostics();
         unsigned DiagID = D.getCustomDiagID(
-          DiagnosticsEngine::Error, "invalid argument '" + args[i] + "'");
+          DiagnosticsEngine::Error, "invalid argument '%0' expected '%1'");
         D.Report(DiagID);
         return false;
       }
