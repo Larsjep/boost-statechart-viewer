@@ -1,16 +1,52 @@
-Thank you for downloading Boost Statechart viewer.
+Boost Statechart Viewer
+=======================
 
-If you want to know more about it read description.
+This clang plugin can visualize simple state machines implemented with
+Boost Statechart library. It is able to visualize states (except for
+orthogonal states) and transitions. The examples folder contains some
+source code of state machines that can be visualized using this tool.
 
-To compile the this program, simpy type
+The input file for the tool is the source code of the state machine.
+On the command line you need to specify all source locations for
+finding header files in the same way as you do for normal compilation
+(e.g. -I options for include files). As this is plugin for compiler
+the program line works the same as normal compiler. The output format
+is dot (part of Graphvis project) and the output file can be
+transformed into the picture using classic dot commands.
 
-  make
+Usage
+-----
 
-If you want to use a different clang/llvm version, create a file
-called Makefile.config in this directory and add there one line:
+Example of command line invocation:
 
-  LLVM_CONFIG := /where/you/have/your/llvm/bin/files/llvm-config
+    clang++ -Xclang -load -Xclang visualizer.so -Xclang -plugin -Xclang visualize-statechart -c file.cpp
+    dot -Tpng file.dot > file.png
 
-This program was tested with LLVM/Clang 3.1.
 
-Enjoy using it. Report bugs to boost-statechart-viewer@rtime.felk.cvut.cz.
+Installation
+------------
+
+For compiling and running the plugin you need to have LLVM and clang
+installed. The program should work with packages distributed with
+common Linux distributions or you can download LLVM and clang from
+repositories and compile it.
+
+On Debian/Ubuntu the dependencies can be installed with:
+
+    sudo apt-get install clang-3.5 libclang-3.5-dev build-essential graphviz
+
+To compile the the plugin, simply run:
+
+    make
+
+If you want to use a different clang/llvm version, run configure
+before running make. For example:
+
+  LLVM_CONFIG=llvm-config-3.5 ./configure
+
+This program was tested with LLVM/Clang 3.5.
+
+Reporting bugs
+--------------
+
+Please report bugs to boost-statechart-viewer@rtime.felk.cvut.cz.
