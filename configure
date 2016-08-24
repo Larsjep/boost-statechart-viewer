@@ -3,22 +3,26 @@
 cd $(dirname $0)
 TOP=$PWD
 
-if [ -x llvm/configure ]; then
-    echo "Will build llvm and clang from sources" 
-    ln -sf ../../clang llvm/tools/clang
-    mkdir -p llvm/_build
-    (
-	cd llvm/_build
-	../configure --prefix=$TOP/_install --enable-optimized 
-    )
-    LLVM_CONFIG=$TOP/_install/bin/llvm-config
+if test -z "$LLVM_CONFIG"; then
+    if [ -x llvm/configure ]; then
+	echo "Will build llvm and clang from sources" 
+	ln -sf ../../clang llvm/tools/clang
+	mkdir -p llvm/_build
+	(
+	    cd llvm/_build
+	    ../configure --prefix=$TOP/_install --enable-optimized 
+	)
+	LLVM_CONFIG=$TOP/_install/bin/llvm-config
+    else
+	echo "Using system-wide llvm and clang"
+	LLVM_CONFIG=llvm-config
+    fi
 else
-    echo "Using system-wide llvm and clang"
-    LLVM_CONFIG=llvm-config
+    echo "Using custom llvm-config: $LLVM_CONFIG"
 fi
 
 cat <<EOF > $TOP/Makefile.config
 LLVM_CONFIG := $LLVM_CONFIG
 EOF
 
-echo "Now run make to compile everything"
+echo "Now run 'make' to compile everything"
