@@ -2,7 +2,7 @@
 
 LLVM_CONFIG ?= llvm-config
 
-LLVM_FLAGS := $(shell $(LLVM_CONFIG) --cxxflags --ldflags --libs jit core)
+LLVM_FLAGS := $(shell $(LLVM_CONFIG) --cxxflags --ldflags --libs mcjit core)
 LLVM_FLAGS := $(filter-out -DNDEBUG,$(LLVM_FLAGS))
 LLVM_VERSION := $(shell $(LLVM_CONFIG) --version)
 
